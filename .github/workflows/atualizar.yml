@@ -1,0 +1,62 @@
+name: Atualizar dados
+
+on:
+  schedule:
+    # Toda segunda-feira às 03:17 (horário de Brasília) = 06:17 UTC
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      ufs:
+        description: "Estados (ex.: PE ou PE,PB). Deixe vazio para todos."
+        required: false
+        default: ""
+      fontes:
+        description: "Quais fontes atualizar"
+        required: false
+        default: "todas"
+        type: choice
+        options:
+          - todas
+          - tesouro
+          - portal
+
+permissions:
+  contents: write
+
+concurrency:
+  group: atualizar-dados
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Buscar os dados oficiais
+        env:
+          PORTAL_CHAVE: ${{ secrets.PORTAL_CHAVE }}
+          UFS: ${{ github.event.inputs.ufs }}
+          FONTES: ${{ github.event.inputs.fontes || 'todas' }}
+        run: python atualizar.py
+
+      - name: Salvar os arquivos no repositório
+        if: always()
+        run: |
+          git config user.name "robo-brasil-em-dados"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A dados .nojekyll || true
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudança nos dados."
+          else
+            git commit -m "Atualiza dados ($(date -u +'%Y-%m-%d'))"
+            git pull --rebase --autostash || true
+            git push
+          fi
