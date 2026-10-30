@@ -804,7 +804,7 @@ def atualizar_pdde(ufs):
                  "atualizado_em": agora, "fonte": "Portal da Transparência — Recursos Transferidos",
                  "municipios": {}}
         for ibge, t in total.get(uf, {}).items():
-            escolas = sorted(([n, round(v, 2)] for n, v in t["esc"].values() if v > 0), key=lambda x: -x[1])
+            escolas = sorted(([polir_nome(n), round(v, 2)] for n, v in t["esc"].values() if v > 0), key=lambda x: -x[1])
             soma_esc = round(sum(v for _, v in escolas), 2)
             saida["municipios"][ibge] = {
                 "pdde_total": round(soma_esc + t["pref"], 2),
@@ -816,6 +816,116 @@ def atualizar_pdde(ufs):
         with open(os.path.join(PASTA_PDDE, f"{uf}.json"), "w", encoding="utf-8") as f:
             json.dump(saida, f, ensure_ascii=False, separators=(",", ":"))
         log(f"PDDE: {uf} — {len(saida['municipios'])} municípios gravados.")
+
+# ----------------------------------------------------------------- PDDE: polimento final dos nomes
+
+_TIPO = (r"(?:Escola|Esc\b|Creche|CMEI|CEMEI|EMEF|EMEI|EMEIEF|Emeief|Emef|Emei|Centro|Colegio|Col[eé]gio|Nucleo|N[uú]cleo|"
+         r"Unidade Escolar|Grupo Escolar|Jardim|Instituto|E\.?\s?M\b|E\s?E\b|e e\b|e M\b|C M e I\b)")
+_ENTIDADE = (r"(?:Associa|Assoc\b|Conselho|Caixa|Apm|A\s?P\s?M\b|A\s?P\s?P\b|Mestre|Metre|Meste|Pais\b|Uex|Unidade Executora|"
+             r"Congrega|Propria|Pr[oó]pria|Funcionarios|Circulo|Comunidade Escolar|E Com\b|Colegiado|Recursos Financeiros|Educadores|Amigos|Appf?\b|Gestor|E Professores|E Func\b|Unid Exec|Cons Esc)")
+_CORTE_PREFIXO = re.compile(r"^(?=.*?" + _ENTIDADE + r").*?\b(?:da|do|de|das|dos)\s+(?=" + _TIPO + ")", re.I)
+_SUFIXO = re.compile(r"\s*[-–(]\s*(?:Apm|A\s?P\s?M|Uex|Aspas|Associa\w*[^)]*)\b[^)]*\)?\s*$|\s+-\s+[A-Z][a-z]\s*$|\s+-\s+[A-Z][a-z]+\s+-\s+[A-Z][a-z]\s*$", re.I)
+_SIGLAS_EXP = [
+    (re.compile(r"\bMunicipal e I e F\b"), "Municipal de Educação Infantil e Ensino Fundamental"),
+    (re.compile(r"\bMunicipal e F\b"), "Municipal de Ensino Fundamental"),
+    (re.compile(r"\bMunicipal e I\b"), "Municipal de Educação Infantil"),
+    (re.compile(r"\bC M e I\b"), "Centro Municipal de Educação Infantil"),
+    (re.compile(r"\b(\d)\s?(?:G|Grau)\b"), r"\1º Grau"),
+    (re.compile(r"\bPre\s?-?\s?Escolar\b", re.I), "Pré-Escolar"),
+]
+_ACENTOS = {
+    "educacao": "Educação", "basica": "Básica", "colegio": "Colégio", "nucleo": "Núcleo", "medio": "Médio",
+    "indigena": "Indígena", "pre": "Pré", "joao": "João", "jose": "José", "antonio": "Antônio", "sebastiao": "Sebastião",
+    "conceicao": "Conceição", "goncalves": "Gonçalves", "sao": "São", "assuncao": "Assunção", "graca": "Graça",
+    "gracas": "Graças", "lucia": "Lúcia", "marcia": "Márcia", "patricia": "Patrícia", "fatima": "Fátima", "inacio": "Inácio",
+    "vitoria": "Vitória", "gloria": "Glória", "julia": "Júlia", "cecilia": "Cecília", "emilia": "Emília", "otavio": "Otávio",
+    "flavio": "Flávio", "fabio": "Fábio", "claudio": "Cláudio", "rogerio": "Rogério", "sergio": "Sérgio", "mario": "Mário",
+    "vinicius": "Vinícius", "lazaro": "Lázaro", "anisio": "Anísio", "cassio": "Cássio", "tancredo": "Tancredo",
+    "simoes": "Simões", "guimaraes": "Guimarães", "magalhaes": "Magalhães", "araujo": "Araújo", "conceicão": "Conceição",
+    "frei": "Frei", "padre": "Padre", "irma": "Irmã", "crianca": "Criança", "criancas": "Crianças", "integracao": "Integração",
+    "esperanca": "Esperança", "uniao": "União", "reuniao": "Reunião", "comunitaria": "Comunitária", "agricola": "Agrícola",
+    "tecnica": "Técnica", "politecnica": "Politécnica", "rural": "Rural", "jesus": "Jesus", "mae": "Mãe", "maes": "Mães",
+    "irmaos": "Irmãos", "familia": "Família", "patio": "Pátio", "historia": "História", "republica": "República",
+    "nossa": "Nossa", "senhora": "Senhora", "cicero": "Cícero", "monica": "Mônica", "angela": "Ângela", "angelo": "Ângelo",
+    "helio": "Hélio", "eugenio": "Eugênio", "jeronimo": "Jerônimo", "candido": "Cândido", "acacio": "Acácio",
+    "silverio": "Silvério", "pedagogico": "Pedagógico", "ensino": "Ensino", "fundamental": "Fundamental",
+    "infancia": "Infância", "rondonia": "Rondônia", "amapa": "Amapá", "para": None, "goias": "Goiás", "piaui": "Piauí",
+    "associacao": "Associação", "principe": "Príncipe", "xodo": "Xodó", "vovo": "Vovó", "paraiso": "Paraíso",
+    "infancias": "Infâncias", "cristovao": "Cristóvão", "mendonca": "Mendonça", "florencio": "Florêncio", "felix": "Félix",
+    "goiania": "Goiânia", "goianesia": "Goianésia", "ceara": "Ceará", "paraiba": "Paraíba", "maranhao": "Maranhão", "parana": "Paraná", "brasilia": "Brasília",
+}
+_MINUSC = {"da", "de", "do", "das", "dos", "e", "em", "na", "no"}
+_SIGLAS_ESCOLA = {"emei", "emef", "emeief", "emeif", "cmei", "cemei", "cei", "caic", "ciep", "apae", "eja", "cieja"}
+
+
+def _palavra(w, primeira):
+    base = w.lower()
+    if base in _SIGLAS_ESCOLA:
+        return w.upper()
+    if w.isupper() and 2 <= len(w) <= 6 and w.lower() not in _MINUSC:
+        return w
+    if base in _MINUSC and not primeira:
+        return base
+    if base in _ACENTOS and _ACENTOS[base]:
+        return _ACENTOS[base]
+    if w.isupper() and len(w) <= 6 and len(w) >= 2 and not re.search(r"[AEIOU]{2}", w):
+        return w                        # sigla (CMEI, EMEF…)
+    return w[:1].upper() + w[1:]
+
+
+def polir_nome(nome):
+    """Arruma o nome já limpo: tira prefixos de associação/conselho, sufixos de sigla,
+    aspas, expande abreviações comuns, põe acentos em palavras frequentes."""
+    n = (nome or "").strip()
+    original = n
+    n = re.sub(r"['\"´`]+", " ", n)                                   # aspas
+    n = re.sub(r"\(\s*(?:uex|apm|associa[^)]*)\)\s*,?", " ", n, flags=re.I)
+    for _ in range(2):
+        novo = _CORTE_PREFIXO.sub("", n)
+        if novo == n:
+            break
+        n = novo
+    n = re.sub(r"^(?=.*?" + _ENTIDADE + r")(?:Escola\s+)?.*?\b(?:Escolar\s+)?(?=(?:Escola (?:Municipal|Estadual|de)|Creche|CMEI|CEMEI|EMEF|EMEI|"
+               r"Centro (?:Municipal|de Educa)|Colegio|Col[eé]gio)\b)", "", n, count=1, flags=re.I) if not re.match(
+               r"(?:Escola (?:Municipal|Estadual|de)|Creche|CMEI|CEMEI|EMEF|EMEI|Centro|Col[eé]gio)\b", n, re.I) else n
+    n = re.sub(r"^Escola\s+(?:da|do)\s+(?=" + _TIPO + ")", "", n, flags=re.I)
+    n = re.sub(r"^(?:Escola\s+)?Caixa Escolar?\s+", "", n, flags=re.I)
+    n = re.sub(r"^(?:Escola\s+)?E Amigos dos Excepcionais\b", "APAE", n, flags=re.I)
+    if re.fullmatch(r"(?:Escola\s+)?(?:A\s?P\s?M|Apm|Associacao de Pais e Mestres)(?:\s*-\s*Apm)?", n, flags=re.I):
+        return "Associação de Pais e Mestres (APM)"
+    n = re.sub(r"^(?:Escola\s+)?(?:A\s?P\s?M|Apm|Uex)\s+(?:da\s+|do\s+)?", "", n, flags=re.I)
+    n = _SUFIXO.sub("", n)
+    n = re.sub(r"\s*-\s*Apm\w*\s*$", "", n, flags=re.I)
+    for rx, rep in _SIGLAS_EXP:
+        n = rx.sub(rep, n)
+    n = re.sub(r"^(?:Escola\s+)?E\s?M e F\b", "Escola Municipal de Ensino Fundamental", n, flags=re.I)
+    n = re.sub(r"^E\s?M\b\.?\s*", "Escola Municipal ", n)
+    n = re.sub(r"^(?:e e|E E|EE)\b\.?\s*", "Escola Estadual ", n)
+    n = re.sub(r"^Esc\.?\s+", "Escola ", n)
+    n = re.sub(r"\bEscola Mun\.?\b", "Escola Municipal", n)
+    n = re.sub(r"^(CMEI|CEMEI|EMEF|EMEI|EMEIEF)\s*-\s*", r"\1 ", n, flags=re.I)
+    n = re.sub(r"^APAE\s*-\s*APAE\b", "APAE", n, flags=re.I)
+    n = re.sub(r"^((?:Escola|Centro) Municipal de [^-]+?)\s*-\s*(?:EMEIEF|EMEF|EMEI|CMEI|CEMEI)\s+", r"\1 ", n, flags=re.I)
+    n = re.sub(r"^Escola\s+(?=(?:Escola|Creche|CMEI|CEMEI|EMEF|EMEI|EMEIEF|Centro|Col[eé]gio|N[uú]cleo|Unidade Escolar|"
+               r"Grupo Escolar|Instituto|Jardim de Inf)\b)", "", n, flags=re.I)
+    n = re.sub(r"\s+", " ", n).strip(" ,.-")
+    partes = re.split(r"(\s+|-|\(|\)|/)", n)
+    saida, primeira = [], True
+    for p in partes:
+        if p and re.match(r"\w", p):
+            saida.append(_palavra(p, primeira))
+            primeira = False
+        else:
+            saida.append(p)
+    n = "".join(saida)
+    n = re.sub(r"\((\w{2,8})\)", lambda m: "(" + m.group(1).upper() + ")" if not re.search(r"[aeiou]{2}", m.group(1).lower()) else m.group(0), n)
+    if len(n) < 4 or not re.search(r"[A-Za-zÀ-ú]{3}", n):
+        return original
+    if not re.match(r"(Escola|Creche|CMEI|CEMEI|EMEF|EMEI|EMEIEF|Emeief|Centro|Colégio|Núcleo|Unidade|Grupo|Instituto|Jardim|"
+                    r"Associação|Apae|APAE|CEI|CAIC|Ciep|CIEP|Casa|Lar|Educandário|Instituição|Projeto|Sociedade|Fundação|Obra)", n):
+        n = "Escola " + n
+    return n
+
 
 # ----------------------------------------------------------------- Fundeb: matrículas (FNDE)
 
