@@ -511,7 +511,8 @@ MINUSCULAS = {"da", "de", "do", "das", "dos", "e", "em"}
 def nome_escola(bruto):
     """Transforma 'CONSELHO ESCOLAR DA EM CHICO SCIENCE' em 'Escola Municipal Chico Science'."""
     original = re.sub(r"\s+", " ", bruto).strip()
-    n = re.sub(r"\s+", " ", normalizar(original).upper()).strip()
+    n = re.sub(r"\s+", " ", normalizar(original).upper().replace(".", " ")).strip()
+    n = re.sub(r"\bMUL\b|\bMUNIC\b", "MUNICIPAL", n)
     for _ in range(3):   # remove "Conselho Escolar da", "Unidade Executora do"... (às vezes repetidos)
         novo = ENTIDADE.sub("", n).strip(" -.,")
         if novo == n:
@@ -620,6 +621,7 @@ def processar_mes(caminho_zip, siafi_ibge):
     resumo = {}   # uf -> ibge -> {"esc": {cnpj: [nome, valor]}, "pref": v, "pnae": v}
     linhas_pdde = linhas_pnae = sem_mun = 0
     nao_achados = {}
+    sem_local = {}   # uf -> cnpj -> [nome, valor]  (pagamentos a escolas sem município no arquivo)
     with zipfile.ZipFile(caminho_zip) as z:
         nome_csv = next((n for n in z.namelist() if n.lower().endswith(".csv")), None)
         if not nome_csv:
@@ -660,13 +662,21 @@ def processar_mes(caminho_zip, siafi_ibge):
                 if not ibge and c_nmun is not None:
                     chave = (uf, normalizar(row[c_nmun]).replace("-", " ").replace("'", " "))
                     ibge = siafi_ibge.get(chave)
+                favorecido = row[c_fav].strip()
+                tipo = normalizar(row[c_tipo]) if c_tipo is not None else ""
+                cnpj = (row[c_cod].strip() if c_cod is not None else "") or favorecido
+                eh_escola = prog == "pdde" and not ("administracao publica" in tipo or "orgao" in tipo
+                                                    or favorecido.upper().startswith(("PREF", "MUNICIPIO")))
+                if not ibge and uf in UFS_NOMES and eh_escola:
+                    item = sem_local.setdefault(uf, {}).setdefault(cnpj, [nome_escola(favorecido), 0.0])
+                    item[1] += valor
+                    linhas_pdde += 1
+                    continue
                 if not ibge or uf not in UFS_NOMES:
                     sem_mun += 1
                     exemplo = (uf, row[c_mun].strip(), row[c_nmun].strip() if c_nmun is not None else "")
                     nao_achados[exemplo] = nao_achados.get(exemplo, 0) + 1
                     continue
-                favorecido = row[c_fav].strip()
-                tipo = normalizar(row[c_tipo]) if c_tipo is not None else ""
                 m = resumo.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0})
                 if prog == "pnae":
                     if not eh_estadual(favorecido):
@@ -674,27 +684,32 @@ def processar_mes(caminho_zip, siafi_ibge):
                     linhas_pnae += 1
                     continue
                 linhas_pdde += 1
-                if "administracao publica" in tipo or "orgao" in tipo or favorecido.upper().startswith(("PREF", "MUNICIPIO")):
+                if not eh_escola:
                     if not eh_estadual(favorecido):
                         m["pref"] += valor
                     continue
-                cnpj = (row[c_cod].strip() if c_cod is not None else "") or favorecido
                 item = m["esc"].setdefault(cnpj, [nome_escola(favorecido), 0.0])
                 item[1] += valor
     log(f"   linhas: {linhas_pdde} de PDDE e {linhas_pnae} de merenda ({sem_mun} sem município identificado).")
     if nao_achados:
         top = sorted(nao_achados.items(), key=lambda kv: -kv[1])[:6]
         log("   não identificados (UF, código, nome → linhas): " + "; ".join(f"{k} → {v}" for k, v in top))
-    for uf in resumo.values():
+    if sem_local:
+        log(f"   {sum(len(v) for v in sem_local.values())} escolas vieram sem município; serão localizadas pelo CNPJ.")
+    for uf in list(resumo.values()):
         for m in uf.values():
             m["pref"] = round(m["pref"], 2)
             m["pnae"] = round(m["pnae"], 2)
             for v in m["esc"].values():
                 v[1] = round(v[1], 2)
+    for itens in sem_local.values():
+        for v in itens.values():
+            v[1] = round(v[1], 2)
+    resumo["_sem_local"] = sem_local
     return resumo
 
 
-VERSAO_CACHE = "v3"   # mudar este valor obriga o robô a reprocessar todos os meses
+VERSAO_CACHE = "v4"   # mudar este valor obriga o robô a reprocessar todos os meses
 
 
 def caminho_mensal(ano, mes):
@@ -745,11 +760,34 @@ def atualizar_pdde(ufs):
     ano = meses[-1][0]
     log(f"PDDE: somando {len(meses)} meses de {ano}.")
     total = {}
+    mensais = []
+    local_cnpj = {}   # cnpj da escola -> (uf, ibge), aprendido nos meses em que veio com município
     for chave in meses:
         with gzip.open(meses_ok[chave], "rt", encoding="utf-8") as f:
             mensal = json.load(f)
+        mensais.append(mensal)
         for uf, muns in mensal.items():
-            if uf not in ufs:
+            if uf.startswith("_"):
+                continue
+            for ibge, m in muns.items():
+                for cnpj in m["esc"]:
+                    local_cnpj[cnpj] = (uf, ibge)
+    achados = perdidos = 0
+    for mensal in mensais:
+        for uf, itens in mensal.get("_sem_local", {}).items():
+            for cnpj, (nome, valor) in itens.items():
+                destino = local_cnpj.get(cnpj)
+                if not destino or destino[0] != uf:
+                    perdidos += 1
+                    continue
+                achados += 1
+                m = mensal.setdefault(uf, {}).setdefault(destino[1], {"esc": {}, "pref": 0.0, "pnae": 0.0})
+                e = m["esc"].setdefault(cnpj, [nome, 0.0])
+                e[1] += valor
+    log(f"PDDE: {achados} pagamentos sem município foram localizados pelo CNPJ; {perdidos} ficaram sem localização.")
+    for mensal in mensais:
+        for uf, muns in mensal.items():
+            if uf.startswith("_") or uf not in ufs:
                 continue
             for ibge, m in muns.items():
                 t = total.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0})
