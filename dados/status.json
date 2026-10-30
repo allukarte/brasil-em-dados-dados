@@ -1,7 +1,33 @@
 {
- "ultima_execucao": "2026-10-29T22:11:57-03:00",
+ "ultima_execucao": "2026-10-30T01:11:09-03:00",
  "estados": [
-  "PE"
+  "AC",
+  "AL",
+  "AM",
+  "AP",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MG",
+  "MS",
+  "MT",
+  "PA",
+  "PB",
+  "PE",
+  "PI",
+  "PR",
+  "RJ",
+  "RN",
+  "RO",
+  "RR",
+  "RS",
+  "SC",
+  "SE",
+  "SP",
+  "TO"
  ],
  "fontes": "portal"
 }
