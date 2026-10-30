@@ -651,6 +651,10 @@ def processar_mes(caminho_zip, siafi_ibge):
                     prog = "pdde"
                 elif "alimentacao escolar" in acao:
                     prog = "pnae"
+                elif "salario" in acao and "educacao" in acao:
+                    prog = "se"
+                elif "transporte escolar" in acao:
+                    prog = "pnate"
                 else:
                     continue
                 valor = numero(row[c_val])
@@ -679,7 +683,11 @@ def processar_mes(caminho_zip, siafi_ibge):
                     exemplo = (uf, row[c_mun].strip(), row[c_nmun].strip() if c_nmun is not None else "")
                     nao_achados[exemplo] = nao_achados.get(exemplo, 0) + 1
                     continue
-                m = resumo.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0})
+                m = resumo.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0})
+                if prog in ("se", "pnate"):
+                    if not eh_estadual(favorecido):
+                        m[prog] += valor
+                    continue
                 if prog == "pnae":
                     if not eh_estadual(favorecido):
                         m["pnae"] += valor
@@ -702,6 +710,8 @@ def processar_mes(caminho_zip, siafi_ibge):
         for m in uf.values():
             m["pref"] = round(m["pref"], 2)
             m["pnae"] = round(m["pnae"], 2)
+            m["se"] = round(m["se"], 2)
+            m["pnate"] = round(m["pnate"], 2)
             for v in m["esc"].values():
                 v[1] = round(v[1], 2)
     for itens in sem_local.values():
@@ -711,7 +721,7 @@ def processar_mes(caminho_zip, siafi_ibge):
     return resumo
 
 
-VERSAO_CACHE = "v4"   # mudar este valor obriga o robô a reprocessar todos os meses
+VERSAO_CACHE = "v5"   # mudar este valor obriga o robô a reprocessar todos os meses
 
 
 def caminho_mensal(ano, mes):
@@ -783,7 +793,7 @@ def atualizar_pdde(ufs):
                     perdidos += 1
                     continue
                 achados += 1
-                m = mensal.setdefault(uf, {}).setdefault(destino[1], {"esc": {}, "pref": 0.0, "pnae": 0.0})
+                m = mensal.setdefault(uf, {}).setdefault(destino[1], {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0})
                 e = m["esc"].setdefault(cnpj, [nome, 0.0])
                 e[1] += valor
     log(f"PDDE: {achados} pagamentos sem município foram localizados pelo CNPJ; {perdidos} ficaram sem localização.")
@@ -792,9 +802,11 @@ def atualizar_pdde(ufs):
             if uf.startswith("_") or uf not in ufs:
                 continue
             for ibge, m in muns.items():
-                t = total.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0})
+                t = total.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0})
                 t["pref"] += m["pref"]
                 t["pnae"] += m["pnae"]
+                t["se"] += m.get("se", 0.0)
+                t["pnate"] += m.get("pnate", 0.0)
                 for cnpj, (nome, valor) in m["esc"].items():
                     e = t["esc"].setdefault(cnpj, [nome, 0.0])
                     e[1] += valor
@@ -812,6 +824,8 @@ def atualizar_pdde(ufs):
                 "pdde_prefeitura": round(t["pref"], 2),
                 "pdde_escolas": escolas,
                 "pnae": round(t["pnae"], 2),
+                "salario_educacao": round(t["se"], 2),
+                "transporte_escolar": round(t["pnate"], 2),
             }
         with open(os.path.join(PASTA_PDDE, f"{uf}.json"), "w", encoding="utf-8") as f:
             json.dump(saida, f, ensure_ascii=False, separators=(",", ":"))
