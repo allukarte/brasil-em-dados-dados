@@ -13,7 +13,8 @@ Fontes:
 Configuração (feita no GitHub, não é preciso editar este arquivo):
   PORTAL_CHAVE  → segredo com a chave da API do Portal da Transparência
   UFS           → opcional: estados a atualizar, ex. "PE" ou "PE,PB". Vazio = todos
-  FONTES        → opcional: "todas", "tesouro", "portal" ou "pdde"
+  FONTES        → opcional: "todas", "tesouro", "portal", "pdde" ou "fundeb"
+                  ("fundeb" = matrículas da rede municipal consideradas no Fundeb, planilha do FNDE)
                   ("pdde" = Dinheiro Direto na Escola e merenda, do arquivo mensal
                    "Recursos Transferidos" do Portal da Transparência; não precisa de chave)
 
@@ -22,6 +23,7 @@ Usa só bibliotecas que já vêm com o Python. Nada para instalar.
 
 import csv
 import gzip
+from html import unescape
 import io
 import json
 import os
@@ -815,6 +817,146 @@ def atualizar_pdde(ufs):
             json.dump(saida, f, ensure_ascii=False, separators=(",", ":"))
         log(f"PDDE: {uf} — {len(saida['municipios'])} municípios gravados.")
 
+# ----------------------------------------------------------------- Fundeb: matrículas (FNDE)
+
+INDICE_MATRICULAS = ("https://www.gov.br/fnde/pt-br/acesso-a-informacao/acoes-e-programas/financiamento/"
+                     "fundeb/matriculas-da-educacao-basica-1")
+RESERVA_MATRICULAS = ("https://www.gov.br/fnde/pt-br/acesso-a-informacao/acoes-e-programas/financiamento/fundeb/"
+                      "matriculas-da-educacao-basica/2026-com-base-na-portaria-interministerial-no-11-de-28-08-2026-1/"
+                      "1-matriculas-coeficientes-e-estimativas-de-receita-do-fundeb-2026.xlsx/@@download/file")
+PASTA_FUNDEB = os.path.join(PASTA, "fundeb")
+
+
+def baixar_bytes(url, tempo=120):
+    cab = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) BrasilEmDados/1.0", "Accept": "*/*"}
+    for tentativa in range(1, 4):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=cab), timeout=tempo) as r:
+                return r.read()
+        except Exception as e:
+            log(f"   falha ao baixar ({e.__class__.__name__}), tentativa {tentativa}/3")
+            time.sleep(8 * tentativa)
+    return None
+
+
+def achar_planilha_matriculas():
+    """Procura no site do FNDE a planilha mais recente de matrículas do Fundeb.
+    Devolve (url, descrição da portaria)."""
+    html = baixar_bytes(INDICE_MATRICULAS)
+    if html:
+        html = html.decode("utf-8", "ignore")
+        ano_atual = datetime.now(FUSO_BR).year
+        paginas = set(re.findall(r'href="([^"]*/matriculas-da-educacao-basica/(\d{4})-com-base-na-portaria[^"]*)"', html))
+        candidatas = []
+        for link, ano in paginas:
+            if int(ano) > ano_atual:
+                continue
+            d = re.search(r"de-(\d{1,2})-(\d{1,2})-(\d{4})", link)
+            data_portaria = (int(d.group(3)), int(d.group(2)), int(d.group(1))) if d else (0, 0, 0)
+            candidatas.append(((int(ano), data_portaria), link))
+        for _, link in sorted(candidatas, reverse=True)[:3]:
+            pagina = baixar_bytes(urllib.parse.urljoin(INDICE_MATRICULAS, link))
+            if not pagina:
+                continue
+            pagina = pagina.decode("utf-8", "ignore")
+            m = re.search(r'href="([^"]*1-matriculas-coeficientes[^"]*?\.xlsx)(?:/@@download/file)?"', pagina)
+            if m:
+                url = urllib.parse.urljoin(INDICE_MATRICULAS, m.group(1)) + "/@@download/file"
+                nome = re.search(r"(\d{4}-com-base[^/]*)", link)
+                return url, (nome.group(1) if nome else link)
+    log("Fundeb: não achei a página do FNDE; usando o endereço conhecido da planilha.")
+    return RESERVA_MATRICULAS, "2026-com-base-na-portaria-interministerial-no-11-de-28-08-2026"
+
+
+def ler_xlsx(conteudo):
+    """Lê a primeira aba de um .xlsx (sem bibliotecas extras). Devolve lista de linhas (listas)."""
+    z = zipfile.ZipFile(io.BytesIO(conteudo))
+    textos = []
+    if "xl/sharedStrings.xml" in z.namelist():
+        ss = z.read("xl/sharedStrings.xml").decode("utf-8")
+        for si in re.findall(r"<si>(.*?)</si>", ss, re.S):
+            textos.append(unescape(re.sub(r"<[^>]+>", "", "".join(re.findall(r"<t[^>]*>(.*?)</t>", si, re.S)))))
+    aba = sorted(n for n in z.namelist() if n.startswith("xl/worksheets/sheet"))[0]
+    xml = z.read(aba).decode("utf-8")
+    linhas = []
+    for corpo in re.findall(r"<row[^>]*>(.*?)</row>", xml, re.S):
+        linha = {}
+        for ref, attrs, interno in re.findall(r'<c r="([A-Z]+)\d+"([^>]*?)(?:/>|>(.*?)</c>)', corpo, re.S):
+            v = re.search(r"<v>(.*?)</v>", interno or "", re.S)
+            if 't="s"' in attrs and v:
+                val = textos[int(v.group(1))]
+            elif 't="inlineStr"' in attrs:
+                val = unescape(re.sub(r"<[^>]+>", "", interno or ""))
+            else:
+                val = v.group(1) if v else ""
+            col = 0
+            for ch in ref:
+                col = col * 26 + ord(ch) - 64
+            linha[col - 1] = val
+        if linha:
+            linhas.append([linha.get(i, "") for i in range(max(linha) + 1)])
+    return linhas
+
+
+def atualizar_fundeb(ufs):
+    """Grava dados/fundeb/UF.json com as matrículas da rede de cada município consideradas
+    no Fundeb e a receita prevista no ano (planilha oficial do FNDE)."""
+    log("===== Fundeb: matrículas do FNDE =====")
+    url, portaria = achar_planilha_matriculas()
+    log(f"Fundeb: planilha {portaria}")
+    conteudo = baixar_bytes(url, tempo=300)
+    if not conteudo or not zipfile.is_zipfile(io.BytesIO(conteudo)):
+        log("Fundeb: não consegui baixar a planilha do FNDE. Os dados antigos foram mantidos.")
+        return
+    linhas = ler_xlsx(conteudo)
+    cab_i = next((i for i, l in enumerate(linhas[:10]) if any(normalizar(c) == "codigo ibge" for c in l)), None)
+    if cab_i is None:
+        log("Fundeb: a planilha mudou de formato (sem coluna 'Código IBGE'). Nada foi alterado.")
+        return
+    cab = [normalizar(c).replace("\n", " ") for c in linhas[cab_i]]
+
+    def col(*palavras):
+        for i, c in enumerate(cab):
+            if all(p in c for p in palavras):
+                return i
+        return None
+
+    c_ibge, c_mat, c_rec = col("codigo ibge"), col("matriculas totais"), col("total das receitas")
+    if c_mat is None:
+        log("Fundeb: coluna 'Matrículas Totais' não encontrada. Nada foi alterado.")
+        return
+    ano = re.match(r"(\d{4})", portaria)
+    ano = int(ano.group(1)) if ano else datetime.now(FUSO_BR).year
+    por_uf = {}
+    for l in linhas[cab_i + 1:]:
+        if len(l) <= max(c_ibge, c_mat):
+            continue
+        cod = str(l[c_ibge]).split(".")[0].strip()
+        if len(cod) != 7 or not cod.isdigit():
+            continue          # linhas dos estados (código de 2 dígitos) ficam de fora
+        uf = UF_POR_CODIGO.get(cod[:2])
+        try:
+            mat = int(round(float(l[c_mat] or 0)))
+            rec = round(float(l[c_rec] or 0), 2) if c_rec is not None and c_rec < len(l) else None
+        except ValueError:
+            continue
+        por_uf.setdefault(uf, {})[cod] = {"matriculas": mat, "receita_prevista": rec}
+    os.makedirs(PASTA_FUNDEB, exist_ok=True)
+    agora = datetime.now(FUSO_BR).isoformat(timespec="seconds")
+    total = 0
+    for uf in ufs:
+        ms = por_uf.get(uf)
+        if not ms:
+            log(f"Fundeb {uf}: nenhum município na planilha.")
+            continue
+        total += len(ms)
+        with open(os.path.join(PASTA_FUNDEB, uf + ".json"), "w", encoding="utf-8") as f:
+            json.dump({"uf": uf, "ano": ano, "portaria": portaria, "atualizado_em": agora,
+                       "fonte": "FNDE — Matrículas, coeficientes e estimativas de receita do Fundeb",
+                       "url": url, "municipios": ms}, f, ensure_ascii=False, separators=(",", ":"))
+    log(f"Fundeb: matrículas gravadas para {total} municípios.")
+
+
 # ----------------------------------------------------------------- principal
 
 def main():
@@ -833,6 +975,10 @@ def main():
 
     if fontes == "pdde":
         atualizar_pdde(ufs)
+        log("Concluído.")
+        return
+    if fontes == "fundeb":
+        atualizar_fundeb(ufs)
         log("Concluído.")
         return
 
@@ -874,6 +1020,11 @@ def main():
         }
         gravar_arquivo(uf, dados)
 
+    if fontes in ("todas", "tesouro"):
+        try:
+            atualizar_fundeb(ufs)
+        except Exception as e:
+            log(f"Fundeb: erro inesperado ({e.__class__.__name__}: {e}). Os dados antigos foram mantidos.")
     if fontes == "todas":
         atualizar_pdde(ufs)
 
