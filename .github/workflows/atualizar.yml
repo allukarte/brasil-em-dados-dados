@@ -19,12 +19,13 @@ on:
           - todas
           - tesouro
           - portal
+          - pdde
 
 permissions:
   contents: write
 
 concurrency:
-  group: atualizar-dados
+  group: atualizar-dados-${{ github.event.inputs.fontes || 'todas' }}
   cancel-in-progress: false
 
 jobs:
@@ -57,6 +58,8 @@ jobs:
             echo "Nenhuma mudança nos dados."
           else
             git commit -m "Atualiza dados ($(date -u +'%Y-%m-%d'))"
-            git pull --rebase --autostash || true
-            git push
+            for i in 1 2 3; do
+              git pull --rebase --autostash && git push && break
+              sleep 15
+            done
           fi
