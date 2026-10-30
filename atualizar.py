@@ -72,23 +72,53 @@ def normalizar(t):
     return "".join(c for c in t if unicodedata.category(c) != "Mn").lower().strip()
 
 
+def requisicao(url, cab, tempo=45):
+    """GET simples com http.client: envia os cabeçalhos exatamente como escritos
+    (o urllib troca 'chave-api-dados' por 'Chave-api-dados'). Devolve (status, corpo)."""
+    import http.client
+    u = urllib.parse.urlsplit(url)
+    caminho = u.path + ("?" + u.query if u.query else "")
+    con = http.client.HTTPSConnection(u.netloc, timeout=tempo)
+    try:
+        con.putrequest("GET", caminho, skip_accept_encoding=True)
+        for k, v in cab.items():
+            con.putheader(k, v)
+        con.endheaders()
+        r = con.getresponse()
+        if r.status in (301, 302, 303, 307, 308) and r.getheader("Location"):
+            destino = urllib.parse.urljoin(url, r.getheader("Location"))
+            con.close()
+            return requisicao(destino, cab, tempo)
+        return r.status, r.read()
+    finally:
+        con.close()
+
+
+class ErroHTTP(Exception):
+    def __init__(self, codigo, corpo):
+        super().__init__(f"HTTP {codigo}")
+        self.code, self.corpo = codigo, corpo
+
+
 def baixar_json(url, cabecalhos=None, tentativas=4, espera_429=65, tempo=45):
     """Baixa um JSON. Repete em caso de falha temporária. Devolve None se não conseguir."""
     cab = {"Accept": "application/json", "User-Agent": "BrasilEmDados/1.0 (robô de dados públicos)"}
     cab.update(cabecalhos or {})
     for tentativa in range(1, tentativas + 1):
         try:
-            req = urllib.request.Request(url, headers=cab)
-            with urllib.request.urlopen(req, timeout=tempo) as r:
-                corpo = r.read().decode("utf-8", errors="replace").strip()
-                return json.loads(corpo) if corpo else None
-        except urllib.error.HTTPError as e:
+            status, corpo = requisicao(url, cab, tempo)
+            if status >= 400:
+                raise ErroHTTP(status, corpo)
+            texto = corpo.decode("utf-8", errors="replace").strip()
+            return json.loads(texto) if texto else None
+        except ErroHTTP as e:
             if e.code == 429:
                 log(f"   limite de consultas atingido; aguardando {espera_429}s…")
                 time.sleep(espera_429)
                 continue
             if e.code in (401, 403):
-                log(f"   acesso negado ({e.code}) em {url.split('?')[0]} — confira a chave.")
+                msg = e.corpo.decode("utf-8", errors="replace").strip()[:200]
+                log(f"   acesso negado ({e.code}) em {url.split('?')[0]} — resposta: {msg or '(vazia)'}")
                 return None
             if e.code in (400, 404):
                 return None
@@ -207,14 +237,22 @@ def diagnostico(chave):
          {"chave-api-dados": chave} if chave else {}),
     ]
     log("----- Teste de conexão com as fontes -----")
+    if chave:
+        estranho = any(c.isspace() for c in chave) or not chave.isalnum()
+        log(f"   Chave do Portal: {len(chave)} caracteres" +
+            (" — ATENÇÃO: contém espaços ou símbolos; confira se colou só a chave" if estranho else ""))
+    else:
+        log("   Chave do Portal: NÃO CONFIGURADA (segredo PORTAL_CHAVE vazio ou ausente)")
     resultado = {}
     for nome, url, cab in testes:
         cab = dict(cab, **{"Accept": "application/json", "User-Agent": "BrasilEmDados/1.0"})
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=cab), timeout=25) as r:
-                resultado[nome] = f"OK (HTTP {r.status})"
-        except urllib.error.HTTPError as e:
-            resultado[nome] = f"respondeu com erro HTTP {e.code}" + (" — chave recusada" if e.code in (401, 403) else "")
+            status, corpo = requisicao(url, cab, 25)
+            if status < 400:
+                resultado[nome] = f"OK (HTTP {status})"
+            else:
+                msg = corpo.decode("utf-8", errors="replace").strip()[:200]
+                resultado[nome] = f"respondeu com erro HTTP {status} — resposta: {msg or '(vazia)'}"
         except Exception as e:
             resultado[nome] = f"SEM RESPOSTA ({e.__class__.__name__})"
         log(f"   {nome}: {resultado[nome]}")
