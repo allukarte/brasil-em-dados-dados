@@ -13,13 +13,21 @@ Fontes:
 Configuração (feita no GitHub, não é preciso editar este arquivo):
   PORTAL_CHAVE  → segredo com a chave da API do Portal da Transparência
   UFS           → opcional: estados a atualizar, ex. "PE" ou "PE,PB". Vazio = todos
-  FONTES        → opcional: "todas", "tesouro" ou "portal"
+  FONTES        → opcional: "todas", "tesouro", "portal" ou "pdde"
+                  ("pdde" = Dinheiro Direto na Escola e merenda, do arquivo mensal
+                   "Recursos Transferidos" do Portal da Transparência; não precisa de chave)
 
 Usa só bibliotecas que já vêm com o Python. Nada para instalar.
 """
 
+import csv
+import gzip
+import io
 import json
 import os
+import re
+import tempfile
+import zipfile
 import sys
 import time
 import unicodedata
@@ -452,6 +460,269 @@ def atualizar_portal(uf, municipios, dados, chave, referencias):
         log(f"Portal: {uf} {programa} — {feitos} atualizados, {pulados} já estavam em dia.")
 
 
+
+# ----------------------------------------------------------------- PDDE e merenda (Recursos Transferidos)
+
+DOWNLOAD_TRANSF = "https://portaldatransparencia.gov.br/download-de-dados/transferencias/{ano}{mes:02d}"
+PASTA_PDDE = os.path.join(PASTA, "pdde")
+PASTA_MENSAL = os.path.join(PASTA_PDDE, "mensal")
+
+PREFIXOS_ESCOLA = [
+    "UNIDADE EXECUTORA DO CONSELHO ESCOLAR DA", "UNIDADE EXECUTORA DO CONSELHO ESCOLAR DO",
+    "UNIDADE EXECUTORA CONSELHO ESCOLAR DA", "UNIDADE EXECUTORA CONSELHO ESCOLAR DO",
+    "UNIDADE EXECUTORA CONSELHO ESCOLAR", "UNIDADE EXECUTORA DA", "UNIDADE EXECUTORA DO", "UNIDADE EXECUTORA",
+    "UEX DO CONSELHO ESCOLAR DA", "UEX DO CONSELHO ESCOLAR DO", "UEX CONSELHO ESCOLAR DA",
+    "UEX CONSELHO ESCOLAR DO", "UEX CONS ESCOLAR DA", "UEX CONSELHO ESCOLAR", "UEX DA", "UEX DO", "UEX",
+    "CONSELHO ESCOLAR DA", "CONSELHO ESCOLAR DO", "CONSELHO ESCOLAR DE", "CONSELHO ESCOLAR",
+    "CONSELHO ECOLAR DA", "CONSELHO DA ESCOLA", "CONSELHO DO", "CONS ESCOLAR DA", "CONS ESCOLAR DO",
+    "CONS.ESCOLAR DA", "CONS.ESCOLAR DO", "CONS. ESCOLAR DA", "CONS ESCOLAR",
+    "CAIXA ESCOLAR DA", "CAIXA ESCOLAR DO", "CAIXA ESCOLAR",
+    "ASSOCIACAO DE PAIS E MESTRES DA", "ASSOCIACAO DE PAIS E MESTRES DO", "ASSOCIACAO DE PAIS E MESTRES",
+    "ASSOCIACAO DE PAIS MESTRES E FUNCIONARIOS DA", "APMF DA", "APMF DO", "APM DA", "APM DO", "APM",
+    "ASSOCIACAO DE APOIO A ESCOLA", "ASSOCIACAO DE APOIO DA", "ASSOCIACAO DE APOIO",
+]
+ABREV = {"EM": "Escola Municipal", "EE": "Escola Estadual", "E M": "Escola Municipal", "E E": "Escola Estadual",
+         "ESC MUN": "Escola Municipal", "ESC EST": "Escola Estadual", "ESC": "Escola", "CMEI": "CMEI",
+         "CEMEI": "CEMEI", "EMEF": "EMEF", "EMEI": "EMEI"}
+MINUSCULAS = {"da", "de", "do", "das", "dos", "e", "em"}
+
+
+def nome_escola(bruto):
+    """Transforma 'CONSELHO ESCOLAR DA EM CHICO SCIENCE' em 'Escola Municipal Chico Science'."""
+    n = re.sub(r"\s+", " ", normalizar(bruto).upper().replace(".", ". ")).strip()
+    n = n.replace(" .", ".").replace(". ", " ").strip()
+    for pref in PREFIXOS_ESCOLA:
+        p = pref.replace(".", " ").replace("  ", " ").strip()
+        if n.startswith(p + " "):
+            n = n[len(p) + 1:]
+            break
+    for ab in sorted(ABREV, key=len, reverse=True):
+        if n == ab or n.startswith(ab + " "):
+            n = ABREV[ab] + n[len(ab):]
+            break
+    if n.startswith("ESCOLA ") or n.startswith("ESC "):
+        pass
+    palavras = []
+    for i, w in enumerate(n.split(" ")):
+        if not w:
+            continue
+        lw = w.lower()
+        if i > 0 and lw in MINUSCULAS:
+            palavras.append(lw)
+        elif w in ("CMEI", "CEMEI", "EMEF", "EMEI", "EREM", "ETE", "EJA", "II", "III", "IV", "CEI", "CAIC", "CIEP"):
+            palavras.append(w)
+        else:
+            palavras.append(lw.capitalize())
+    resultado = " ".join(palavras)
+    return resultado or bruto.strip().title()
+
+
+def eh_estadual(nome):
+    n = normalizar(nome).upper()
+    return any(t in n for t in ("SECRETARIA DE ESTADO", "SEC DE ESTADO", "SECRETARIA ESTADUAL", "SEC EST ",
+                                "GOVERNO DO ESTADO", "ESTADO DE ", "ESTADO DO ", "ESTADO DA ", "SEDUC",
+                                "SECRETARIA DA EDUCACAO DO ESTADO", "SECRETARIA DE EDUCACAO DO ESTADO",
+                                "SECRETARIA DE EDUCACAO E ESPORTES", "DISTRITO FEDERAL"))
+
+
+def mapa_siafi_ibge():
+    """Liga o código SIAFI do município (usado pelo Portal) ao código IBGE."""
+    try:
+        req = urllib.request.Request(LISTA_RESERVA, headers={"User-Agent": "BrasilEmDados/1.0"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            texto = r.read().decode("utf-8-sig")
+    except Exception as e:
+        log(f"PDDE: não consegui baixar a tabela SIAFI→IBGE ({e.__class__.__name__}).")
+        return {}
+    mapa = {}
+    for linha in csv.DictReader(io.StringIO(texto)):
+        try:
+            mapa[int(linha["siafi_id"])] = linha["codigo_ibge"].strip()
+        except (KeyError, ValueError):
+            continue
+    log(f"PDDE: tabela SIAFI→IBGE com {len(mapa)} municípios.")
+    return mapa
+
+
+def baixar_arquivo_mes(ano, mes, destino):
+    """Baixa o ZIP mensal de Recursos Transferidos. Devolve True se baixou um ZIP válido."""
+    url = DOWNLOAD_TRANSF.format(ano=ano, mes=mes)
+    cab = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) BrasilEmDados/1.0", "Accept": "*/*"}
+    for tentativa in range(1, 4):
+        try:
+            req = urllib.request.Request(url, headers=cab)
+            with urllib.request.urlopen(req, timeout=300) as r, open(destino, "wb") as f:
+                while True:
+                    bloco = r.read(1 << 20)
+                    if not bloco:
+                        break
+                    f.write(bloco)
+            if zipfile.is_zipfile(destino):
+                return True
+            log(f"   {mes:02d}/{ano}: o Portal não devolveu um arquivo ZIP (mês ainda não publicado?).")
+            return False
+        except urllib.error.HTTPError as e:
+            if e.code in (403, 404):
+                log(f"   {mes:02d}/{ano}: arquivo não disponível (HTTP {e.code}).")
+                return False
+            log(f"   {mes:02d}/{ano}: erro HTTP {e.code} (tentativa {tentativa}/3)")
+        except Exception as e:
+            log(f"   {mes:02d}/{ano}: falha {e.__class__.__name__} (tentativa {tentativa}/3)")
+        time.sleep(10 * tentativa)
+    return False
+
+
+def coluna(cabecalho, *palavras):
+    """Acha a coluna cujo nome contém todas as palavras (sem acento, minúsculas)."""
+    for i, nome in enumerate(cabecalho):
+        n = normalizar(nome)
+        if all(p in n for p in palavras):
+            return i
+    return None
+
+
+def processar_mes(caminho_zip, siafi_ibge):
+    """Lê o CSV do mês e soma PDDE (por escola) e merenda por município."""
+    resumo = {}   # uf -> ibge -> {"esc": {cnpj: [nome, valor]}, "pref": v, "pnae": v}
+    linhas_pdde = linhas_pnae = sem_mun = 0
+    with zipfile.ZipFile(caminho_zip) as z:
+        nome_csv = next((n for n in z.namelist() if n.lower().endswith(".csv")), None)
+        if not nome_csv:
+            return None
+        with z.open(nome_csv) as bruto:
+            texto = io.TextIOWrapper(bruto, encoding="latin-1", newline="")
+            leitor = csv.reader(texto, delimiter=";", quotechar='"')
+            cab = next(leitor)
+            c_uf = coluna(cab, "uf")
+            c_mun = coluna(cab, "municipio", "siafi")
+            c_acao = coluna(cab, "nome", "acao")
+            c_cod = coluna(cab, "codigo", "favorecido")
+            c_fav = coluna(cab, "nome", "favorecido")
+            c_tipo = coluna(cab, "tipo", "favorecido")
+            c_val = coluna(cab, "valor")
+            if None in (c_uf, c_mun, c_acao, c_fav, c_val):
+                log(f"   colunas inesperadas no arquivo: {cab}")
+                return None
+            for row in leitor:
+                if len(row) <= max(c_uf, c_mun, c_acao, c_fav, c_val):
+                    continue
+                acao = normalizar(row[c_acao])
+                if "dinheiro direto na escola" in acao:
+                    prog = "pdde"
+                elif "alimentacao escolar" in acao:
+                    prog = "pnae"
+                else:
+                    continue
+                valor = numero(row[c_val])
+                if not valor:
+                    continue
+                try:
+                    ibge = siafi_ibge.get(int(row[c_mun]))
+                except ValueError:
+                    ibge = None
+                uf = row[c_uf].strip().upper()
+                if not ibge or uf not in UFS_NOMES:
+                    sem_mun += 1
+                    continue
+                favorecido = row[c_fav].strip()
+                tipo = normalizar(row[c_tipo]) if c_tipo is not None else ""
+                m = resumo.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0})
+                if prog == "pnae":
+                    if not eh_estadual(favorecido):
+                        m["pnae"] += valor
+                    linhas_pnae += 1
+                    continue
+                linhas_pdde += 1
+                if "administracao publica" in tipo or "orgao" in tipo or favorecido.upper().startswith(("PREF", "MUNICIPIO")):
+                    if not eh_estadual(favorecido):
+                        m["pref"] += valor
+                    continue
+                cnpj = (row[c_cod].strip() if c_cod is not None else "") or favorecido
+                item = m["esc"].setdefault(cnpj, [nome_escola(favorecido), 0.0])
+                item[1] += valor
+    log(f"   linhas: {linhas_pdde} de PDDE e {linhas_pnae} de merenda ({sem_mun} sem município identificado).")
+    for uf in resumo.values():
+        for m in uf.values():
+            m["pref"] = round(m["pref"], 2)
+            m["pnae"] = round(m["pnae"], 2)
+            for v in m["esc"].values():
+                v[1] = round(v[1], 2)
+    return resumo
+
+
+def caminho_mensal(ano, mes):
+    return os.path.join(PASTA_MENSAL, f"{ano}-{mes:02d}.json.gz")
+
+
+def atualizar_pdde(ufs):
+    os.makedirs(PASTA_MENSAL, exist_ok=True)
+    siafi_ibge = mapa_siafi_ibge()
+    if not siafi_ibge:
+        return
+    hoje = date.today()
+    meses_ok = {}
+    for ano in (hoje.year,):
+        for mes in range(1, 13):
+            if (ano, mes) > (hoje.year, hoje.month):
+                break
+            destino = caminho_mensal(ano, mes)
+            recente = (hoje.year * 12 + hoje.month) - (ano * 12 + mes) <= 2   # meses recentes podem ser revisados
+            if os.path.exists(destino) and not recente:
+                meses_ok[(ano, mes)] = destino
+                continue
+            log(f"PDDE: baixando Recursos Transferidos de {mes:02d}/{ano}…")
+            with tempfile.TemporaryDirectory() as tmp:
+                arq = os.path.join(tmp, "mes.zip")
+                if not baixar_arquivo_mes(ano, mes, arq):
+                    if os.path.exists(destino):
+                        meses_ok[(ano, mes)] = destino
+                    continue
+                log(f"   arquivo com {os.path.getsize(arq) / 1e6:.0f} MB; lendo…")
+                resumo = processar_mes(arq, siafi_ibge)
+            if resumo is None:
+                continue
+            with gzip.open(destino, "wt", encoding="utf-8") as f:
+                json.dump(resumo, f, ensure_ascii=False, separators=(",", ":"))
+            meses_ok[(ano, mes)] = destino
+    if not meses_ok:
+        log("PDDE: nenhum mês disponível ainda.")
+        return
+    meses = sorted(meses_ok)
+    ano = meses[-1][0]
+    log(f"PDDE: somando {len(meses)} meses de {ano}.")
+    total = {}
+    for chave in meses:
+        with gzip.open(meses_ok[chave], "rt", encoding="utf-8") as f:
+            mensal = json.load(f)
+        for uf, muns in mensal.items():
+            if uf not in ufs:
+                continue
+            for ibge, m in muns.items():
+                t = total.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0})
+                t["pref"] += m["pref"]
+                t["pnae"] += m["pnae"]
+                for cnpj, (nome, valor) in m["esc"].items():
+                    e = t["esc"].setdefault(cnpj, [nome, 0.0])
+                    e[1] += valor
+    agora = datetime.now(FUSO_BR).isoformat(timespec="seconds")
+    for uf in ufs:
+        saida = {"uf": uf, "ano": ano, "mes_inicial": meses[0][1], "mes_final": meses[-1][1],
+                 "atualizado_em": agora, "fonte": "Portal da Transparência — Recursos Transferidos",
+                 "municipios": {}}
+        for ibge, t in total.get(uf, {}).items():
+            escolas = sorted(([n, round(v, 2)] for n, v in t["esc"].values() if v > 0), key=lambda x: -x[1])
+            soma_esc = round(sum(v for _, v in escolas), 2)
+            saida["municipios"][ibge] = {
+                "pdde_total": round(soma_esc + t["pref"], 2),
+                "pdde_escolas_total": soma_esc,
+                "pdde_prefeitura": round(t["pref"], 2),
+                "pdde_escolas": escolas,
+                "pnae": round(t["pnae"], 2),
+            }
+        with open(os.path.join(PASTA_PDDE, f"{uf}.json"), "w", encoding="utf-8") as f:
+            json.dump(saida, f, ensure_ascii=False, separators=(",", ":"))
+        log(f"PDDE: {uf} — {len(saida['municipios'])} municípios gravados.")
+
 # ----------------------------------------------------------------- principal
 
 def main():
@@ -467,6 +738,11 @@ def main():
     nojekyll = os.path.join(os.path.dirname(PASTA), ".nojekyll")
     if not os.path.exists(nojekyll):
         open(nojekyll, "w").close()
+
+    if fontes == "pdde":
+        atualizar_pdde(ufs)
+        log("Concluído.")
+        return
 
     diagnostico(chave)
     municipios = municipios_ibge()
@@ -505,6 +781,9 @@ def main():
             "municipios": "IBGE",
         }
         gravar_arquivo(uf, dados)
+
+    if fontes == "todas":
+        atualizar_pdde(ufs)
 
     with open(os.path.join(PASTA, "status.json"), "w", encoding="utf-8") as f:
         json.dump({"ultima_execucao": datetime.now(FUSO_BR).isoformat(timespec="seconds"),
