@@ -487,34 +487,64 @@ ABREV = {"EM": "Escola Municipal", "EE": "Escola Estadual", "E M": "Escola Munic
 MINUSCULAS = {"da", "de", "do", "das", "dos", "e", "em"}
 
 
+ENTIDADE = re.compile(
+    r"^(?:"
+    r"UNID(?:ADE)?\.?\s*E[XSC]+ECUTORA|U\.?\s?EX\.?|UEX|"
+    r"CONS(?:ELHO)?\.?\s*(?:ESCOLAR|ECOLAR|ESC\.?)|CONSELHO\s+(?:DA|DE)\s+ESCOLA|CONSELHO\s+(?:DO|DA)|"
+    r"CAIXA\s+ESCOLAR|"
+    r"ASSOC\w*\s+(?:DE\s+)?PAIS(?:\s*,?\s*(?:E\s+)?MESTRES)?(?:\s*E\s+FUNCIONARIOS)?|APMF?|APM\b|"
+    r"ASSOC\w*\s+(?:DE\s+)?APOIO(?:\s+(?:A|À)\s+ESCOLA)?|ASSOC\w*\s+ESCOLAR|ASSOC\w*\s+COMUNITARIA"
+    r")\s*(?:D[AOE]S?\s+)?"
+)
+SIGLAS = {"CMEI", "CEMEI", "EMEF", "EMEI", "EREM", "ETE", "EJA", "II", "III", "IV", "VI", "VII", "CEI",
+          "CAIC", "CIEP", "CAIC", "EEEP", "EEEFM", "EEF", "EEM", "CEU", "SESI", "UR", "CEJA", "IFPE", "CMEF"}
+ABREVIACOES = [
+    (r"^(?:ESC(?:OLA)?\.?\s+MUN(?:ICIPAL|IC)?\.?|E\.?\s?M\.?(?:\s|$)|EM\s)", "Escola Municipal "),
+    (r"^(?:ESC(?:OLA)?\.?\s+EST(?:ADUAL)?\.?|E\.?\s?E\.?(?:\s|$)|EE\s)", "Escola Estadual "),
+    (r"^ESC(?:OLA)?\.?\s", "Escola "),
+    (r"^COL(?:EGIO)?\.?\s+MUN(?:ICIPAL)?\.?\s", "Colégio Municipal "),
+    (r"^COL(?:EGIO)?\.?\s+EST(?:ADUAL)?\.?\s", "Colégio Estadual "),
+]
+MINUSCULAS = {"da", "de", "do", "das", "dos", "e", "em"}
+
+
 def nome_escola(bruto):
     """Transforma 'CONSELHO ESCOLAR DA EM CHICO SCIENCE' em 'Escola Municipal Chico Science'."""
-    n = re.sub(r"\s+", " ", normalizar(bruto).upper().replace(".", ". ")).strip()
-    n = n.replace(" .", ".").replace(". ", " ").strip()
-    for pref in PREFIXOS_ESCOLA:
-        p = pref.replace(".", " ").replace("  ", " ").strip()
-        if n.startswith(p + " "):
-            n = n[len(p) + 1:]
+    original = re.sub(r"\s+", " ", bruto).strip()
+    n = re.sub(r"\s+", " ", normalizar(original).upper()).strip()
+    for _ in range(3):   # remove "Conselho Escolar da", "Unidade Executora do"... (às vezes repetidos)
+        novo = ENTIDADE.sub("", n).strip(" -.,")
+        if novo == n:
             break
-    for ab in sorted(ABREV, key=len, reverse=True):
-        if n == ab or n.startswith(ab + " "):
-            n = ABREV[ab] + n[len(ab):]
+        n = novo
+    if len(n) < 4:       # sobrou só o tipo da entidade: mantém o nome original
+        n = re.sub(r"\s+", " ", normalizar(original).upper()).strip()
+    prefixo = ""
+    for padrao, troca in ABREVIACOES:
+        m = re.match(padrao, n + " ")
+        if m:
+            prefixo, n = troca.strip(), (n + " ")[m.end():].strip()
             break
-    if n.startswith("ESCOLA ") or n.startswith("ESC "):
-        pass
     palavras = []
     for i, w in enumerate(n.split(" ")):
         if not w:
             continue
         lw = w.lower()
-        if i > 0 and lw in MINUSCULAS:
+        if lw in MINUSCULAS and (i > 0 or prefixo):
             palavras.append(lw)
-        elif w in ("CMEI", "CEMEI", "EMEF", "EMEI", "EREM", "ETE", "EJA", "II", "III", "IV", "CEI", "CAIC", "CIEP"):
+        elif w.strip(".") in SIGLAS:
             palavras.append(w)
+        elif w in ("PROF", "PROFA", "PROFª", "DR", "DRA", "PE", "STA", "STO"):
+            palavras.append(lw.capitalize() + ".")
         else:
             palavras.append(lw.capitalize())
-    resultado = " ".join(palavras)
-    return resultado or bruto.strip().title()
+    nome = (prefixo + " " + " ".join(palavras)).strip()
+    tipos = ("escola", "colégio", "colegio", "creche", "centro", "grupo", "instituto", "ginásio", "ginasio",
+             "unidade", "núcleo", "nucleo", "liceu", "associ", "cmei", "cemei", "emef", "emei", "erem", "ete",
+             "cei", "caic", "ciep", "eeep", "ceja", "cmef", "ifpe")
+    if nome and not nome.lower().startswith(tipos):
+        nome = "Escola " + nome
+    return nome or original.title()
 
 
 def eh_estadual(nome):
@@ -537,10 +567,14 @@ def mapa_siafi_ibge():
     mapa = {}
     for linha in csv.DictReader(io.StringIO(texto)):
         try:
-            mapa[int(linha["siafi_id"])] = linha["codigo_ibge"].strip()
+            ibge = linha["codigo_ibge"].strip()
+            mapa[int(linha["siafi_id"])] = ibge
+            uf = UF_POR_CODIGO.get(str(linha.get("codigo_uf", "")).strip())
+            if uf:   # plano B: reconhecer pela UF + nome do município
+                mapa[(uf, normalizar(linha["nome"]).replace("-", " ").replace("'", " "))] = ibge
         except (KeyError, ValueError):
             continue
-    log(f"PDDE: tabela SIAFI→IBGE com {len(mapa)} municípios.")
+    log(f"PDDE: tabela SIAFI→IBGE com {sum(1 for k in mapa if isinstance(k, int))} municípios.")
     return mapa
 
 
@@ -585,6 +619,7 @@ def processar_mes(caminho_zip, siafi_ibge):
     """Lê o CSV do mês e soma PDDE (por escola) e merenda por município."""
     resumo = {}   # uf -> ibge -> {"esc": {cnpj: [nome, valor]}, "pref": v, "pnae": v}
     linhas_pdde = linhas_pnae = sem_mun = 0
+    nao_achados = {}
     with zipfile.ZipFile(caminho_zip) as z:
         nome_csv = next((n for n in z.namelist() if n.lower().endswith(".csv")), None)
         if not nome_csv:
@@ -595,6 +630,7 @@ def processar_mes(caminho_zip, siafi_ibge):
             cab = next(leitor)
             c_uf = coluna(cab, "uf")
             c_mun = coluna(cab, "municipio", "siafi")
+            c_nmun = coluna(cab, "nome", "municipio")
             c_acao = coluna(cab, "nome", "acao")
             c_cod = coluna(cab, "codigo", "favorecido")
             c_fav = coluna(cab, "nome", "favorecido")
@@ -616,13 +652,18 @@ def processar_mes(caminho_zip, siafi_ibge):
                 valor = numero(row[c_val])
                 if not valor:
                     continue
+                uf = row[c_uf].strip().upper()
                 try:
                     ibge = siafi_ibge.get(int(row[c_mun]))
                 except ValueError:
                     ibge = None
-                uf = row[c_uf].strip().upper()
+                if not ibge and c_nmun is not None:
+                    chave = (uf, normalizar(row[c_nmun]).replace("-", " ").replace("'", " "))
+                    ibge = siafi_ibge.get(chave)
                 if not ibge or uf not in UFS_NOMES:
                     sem_mun += 1
+                    exemplo = (uf, row[c_mun].strip(), row[c_nmun].strip() if c_nmun is not None else "")
+                    nao_achados[exemplo] = nao_achados.get(exemplo, 0) + 1
                     continue
                 favorecido = row[c_fav].strip()
                 tipo = normalizar(row[c_tipo]) if c_tipo is not None else ""
@@ -641,6 +682,9 @@ def processar_mes(caminho_zip, siafi_ibge):
                 item = m["esc"].setdefault(cnpj, [nome_escola(favorecido), 0.0])
                 item[1] += valor
     log(f"   linhas: {linhas_pdde} de PDDE e {linhas_pnae} de merenda ({sem_mun} sem município identificado).")
+    if nao_achados:
+        top = sorted(nao_achados.items(), key=lambda kv: -kv[1])[:6]
+        log("   não identificados (UF, código, nome → linhas): " + "; ".join(f"{k} → {v}" for k, v in top))
     for uf in resumo.values():
         for m in uf.values():
             m["pref"] = round(m["pref"], 2)
@@ -650,12 +694,22 @@ def processar_mes(caminho_zip, siafi_ibge):
     return resumo
 
 
+VERSAO_CACHE = "v3"   # mudar este valor obriga o robô a reprocessar todos os meses
+
+
 def caminho_mensal(ano, mes):
-    return os.path.join(PASTA_MENSAL, f"{ano}-{mes:02d}.json.gz")
+    return os.path.join(PASTA_MENSAL, f"{ano}-{mes:02d}.{VERSAO_CACHE}.json.gz")
+
+
+def limpar_cache_antigo():
+    for nome in os.listdir(PASTA_MENSAL):
+        if nome.endswith(".json.gz") and f".{VERSAO_CACHE}." not in nome:
+            os.remove(os.path.join(PASTA_MENSAL, nome))
 
 
 def atualizar_pdde(ufs):
     os.makedirs(PASTA_MENSAL, exist_ok=True)
+    limpar_cache_antigo()
     siafi_ibge = mapa_siafi_ibge()
     if not siafi_ibge:
         return
