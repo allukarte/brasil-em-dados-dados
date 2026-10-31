@@ -1072,6 +1072,7 @@ def atualizar_fundeb(ufs):
         return None
 
     c_ibge, c_mat, c_rec = col("codigo ibge"), col("matriculas totais"), col("total das receitas")
+    c_vaaf, c_vaat, c_vaar = col("vaaf"), col("vaat"), col("vaar")
     if c_mat is None:
         log("Fundeb: coluna 'Matrículas Totais' não encontrada. Nada foi alterado.")
         return
@@ -1090,7 +1091,14 @@ def atualizar_fundeb(ufs):
             rec = round(float(l[c_rec] or 0), 2) if c_rec is not None and c_rec < len(l) else None
         except ValueError:
             continue
-        por_uf.setdefault(uf, {})[cod] = {"matriculas": mat, "receita_prevista": rec}
+        item = {"matriculas": mat, "receita_prevista": rec}
+        for nome_c, c in (("vaaf", c_vaaf), ("vaat", c_vaat), ("vaar", c_vaar)):
+            if c is not None and c < len(l):
+                try:
+                    item[nome_c] = round(float(l[c] or 0), 2)
+                except ValueError:
+                    pass
+        por_uf.setdefault(uf, {})[cod] = item
     os.makedirs(PASTA_FUNDEB, exist_ok=True)
     agora = datetime.now(FUSO_BR).isoformat(timespec="seconds")
     total = 0
