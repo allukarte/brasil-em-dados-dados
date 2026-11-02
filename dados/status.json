@@ -1,5 +1,5 @@
 {
- "ultima_execucao": "2026-10-30T01:11:09-03:00",
+ "ultima_execucao": "2026-11-02T13:16:17-03:00",
  "estados": [
   "AC",
   "AL",
@@ -29,5 +29,5 @@
   "SP",
   "TO"
  ],
- "fontes": "portal"
+ "fontes": "todas"
 }
