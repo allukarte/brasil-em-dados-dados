@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Robô do Brasil em Dados
+Robô do Repasse Aberto
 =======================
 Busca dados oficiais por município e grava um arquivo por estado em  dados/UF.json
 (por exemplo dados/PE.json). A página do Blogger lê esses arquivos.
@@ -112,7 +112,7 @@ class ErroHTTP(Exception):
 
 def baixar_json(url, cabecalhos=None, tentativas=4, espera_429=65, tempo=45):
     """Baixa um JSON. Repete em caso de falha temporária. Devolve None se não conseguir."""
-    cab = {"Accept": "application/json", "User-Agent": "BrasilEmDados/1.0 (robô de dados públicos)"}
+    cab = {"Accept": "application/json", "User-Agent": "RepasseAberto/1.0 (robô de dados públicos)"}
     cab.update(cabecalhos or {})
     for tentativa in range(1, tentativas + 1):
         try:
@@ -224,7 +224,7 @@ def municipios_ibge():
 def municipios_reserva():
     import csv, io
     try:
-        req = urllib.request.Request(LISTA_RESERVA, headers={"User-Agent": "BrasilEmDados/1.0"})
+        req = urllib.request.Request(LISTA_RESERVA, headers={"User-Agent": "RepasseAberto/1.0"})
         with urllib.request.urlopen(req, timeout=60) as r:
             texto = r.read().decode("utf-8-sig")
     except Exception as e:
@@ -255,7 +255,7 @@ def diagnostico(chave):
         log("   Chave do Portal: NÃO CONFIGURADA (segredo PORTAL_CHAVE vazio ou ausente)")
     resultado = {}
     for nome, url, cab in testes:
-        cab = dict(cab, **{"Accept": "application/json", "User-Agent": "BrasilEmDados/1.0"})
+        cab = dict(cab, **{"Accept": "application/json", "User-Agent": "RepasseAberto/1.0"})
         try:
             status, corpo = requisicao(url, cab, 25)
             if status < 400:
@@ -561,7 +561,7 @@ def eh_estadual(nome):
 def mapa_siafi_ibge():
     """Liga o código SIAFI do município (usado pelo Portal) ao código IBGE."""
     try:
-        req = urllib.request.Request(LISTA_RESERVA, headers={"User-Agent": "BrasilEmDados/1.0"})
+        req = urllib.request.Request(LISTA_RESERVA, headers={"User-Agent": "RepasseAberto/1.0"})
         with urllib.request.urlopen(req, timeout=60) as r:
             texto = r.read().decode("utf-8-sig")
     except Exception as e:
@@ -584,7 +584,7 @@ def mapa_siafi_ibge():
 def baixar_arquivo_mes(ano, mes, destino):
     """Baixa o ZIP mensal de Recursos Transferidos. Devolve True se baixou um ZIP válido."""
     url = DOWNLOAD_TRANSF.format(ano=ano, mes=mes)
-    cab = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) BrasilEmDados/1.0", "Accept": "*/*"}
+    cab = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) RepasseAberto/1.0", "Accept": "*/*"}
     for tentativa in range(1, 4):
         try:
             req = urllib.request.Request(url, headers=cab)
@@ -978,7 +978,7 @@ PASTA_FUNDEB = os.path.join(PASTA, "fundeb")
 
 
 def baixar_bytes(url, tempo=120):
-    cab = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) BrasilEmDados/1.0", "Accept": "*/*"}
+    cab = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) RepasseAberto/1.0", "Accept": "*/*"}
     for tentativa in range(1, 4):
         try:
             with urllib.request.urlopen(urllib.request.Request(url, headers=cab), timeout=tempo) as r:
