@@ -13,7 +13,7 @@ Fontes:
 Configuração (feita no GitHub, não é preciso editar este arquivo):
   PORTAL_CHAVE  → segredo com a chave da API do Portal da Transparência
   UFS           → opcional: estados a atualizar, ex. "PE" ou "PE,PB". Vazio = todos
-  FONTES        → opcional: "todas", "tesouro", "portal", "pdde" ou "fundeb"
+  FONTES        → opcional: "todas", "tesouro", "portal", "pdde", "fundeb" ou "convenios"
                   ("fundeb" = matrículas da rede municipal consideradas no Fundeb, planilha do FNDE)
                   ("pdde" = Dinheiro Direto na Escola e merenda, do arquivo mensal
                    "Recursos Transferidos" do Portal da Transparência; não precisa de chave)
@@ -390,6 +390,29 @@ def atualizar_tesouro(uf, municipios, dados, codigos):
     if not resumo:
         log(f"Tesouro: nenhuma transferência encontrada para {uf}.")
         return
+    # Mesmo período do ano anterior, para comparar (ex.: jan–out/2025 com jan–out/2026)
+    anterior = {}
+    ano_atual = next(iter(resumo.values()))["ano"]
+    if cod_uf is not None:
+        try:
+            for r in tesouro_registros({"p_estado": cod_uf, "p_ano": ano_atual - 1}):
+                cod = "".join(ch for ch in str(chave_ci(r, "co_ibge") or "") if ch.isdigit())
+                info = resumo.get(cod)
+                mes = int(numero(chave_ci(r, "mes")))
+                if not info or not info.get("mes_final") or mes > info["mes_final"]:
+                    continue
+                nome = str(chave_ci(r, "transferencia") or "").upper()
+                valor = numero(chave_ci(r, "valor", "total"))
+                a = anterior.setdefault(cod, {"ano": ano_atual - 1, "fundeb": 0.0, "fpm": 0.0, "total": 0.0})
+                a["total"] += valor
+                if "FUNDEB" in nome:
+                    a["fundeb"] += valor
+                elif nome.startswith("FPM"):
+                    a["fpm"] += valor
+        except Exception as e:
+            log(f"Tesouro: não consegui buscar o ano anterior de {uf} ({e.__class__.__name__}).")
+    for cod, a in anterior.items():
+        resumo[cod]["ano_anterior"] = {k: (round(v, 2) if isinstance(v, float) else v) for k, v in a.items()}
     # O Tesouro pode usar o código IBGE com 6 ou 7 dígitos; os dois são aceitos.
     por6 = {m["id"][:6]: m["id"] for m in municipios}
     ids = {m["id"] for m in municipios}
@@ -1073,6 +1096,23 @@ def atualizar_fundeb(ufs):
 
     c_ibge, c_mat, c_rec = col("codigo ibge"), col("matriculas totais"), col("total das receitas")
     c_vaaf, c_vaat, c_vaar = col("vaaf"), col("vaat"), col("vaar")
+    etapa_cols = {}
+    for i, c in enumerate(cab):
+        if c_mat is not None and i >= c_mat:
+            break
+        if c.startswith("educacao especial") or c.startswith("atendimento educacional") or c.startswith("educacao bilingue"):
+            etapa_cols[i] = "especial"
+        elif c.startswith("creche"):
+            etapa_cols[i] = "creche"
+        elif c.startswith("pre-escola") or c.startswith("pre escola"):
+            etapa_cols[i] = "pre_escola"
+        elif c.startswith("ensino fundamental") or c.startswith("anos iniciais") or c.startswith("anos finais"):
+            etapa_cols[i] = "fundamental"
+        elif c.startswith("ensino medio"):
+            etapa_cols[i] = "medio"
+        elif c.startswith("eja"):
+            etapa_cols[i] = "eja"
+    log(f"Fundeb: {len(etapa_cols)} colunas de etapas reconhecidas.")
     if c_mat is None:
         log("Fundeb: coluna 'Matrículas Totais' não encontrada. Nada foi alterado.")
         return
@@ -1092,6 +1132,15 @@ def atualizar_fundeb(ufs):
         except ValueError:
             continue
         item = {"matriculas": mat, "receita_prevista": rec}
+        etapas = {}
+        for i, nome_e in etapa_cols.items():
+            if i < len(l):
+                try:
+                    etapas[nome_e] = etapas.get(nome_e, 0) + int(round(float(l[i] or 0)))
+                except ValueError:
+                    pass
+        if etapas:
+            item["etapas"] = {k: v for k, v in etapas.items() if v}
         for nome_c, c in (("vaaf", c_vaaf), ("vaat", c_vaat), ("vaar", c_vaar)):
             if c is not None and c < len(l):
                 try:
@@ -1113,6 +1162,143 @@ def atualizar_fundeb(ufs):
                        "fonte": "FNDE — Matrículas, coeficientes e estimativas de receita do Fundeb",
                        "url": url, "municipios": ms}, f, ensure_ascii=False, separators=(",", ":"))
     log(f"Fundeb: matrículas gravadas para {total} municípios.")
+
+
+# ----------------------------------------------------------------- Convênios (Portal da Transparência)
+
+DOWNLOAD_CONVENIOS = "https://portaldatransparencia.gov.br/download-de-dados/convenios/{data}"
+PASTA_CONVENIOS = os.path.join(PASTA, "convenios")
+
+
+def _data_br(t):
+    t = (t or "").strip()
+    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", t)
+    if m:
+        return f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", t)
+    return m.group(0) if m else ""
+
+
+def atualizar_convenios(ufs):
+    """Grava dados/convenios/UF.json com os convênios federais de cada município
+    (em execução ou encerrados nos últimos 12 meses), a partir do arquivo diário do Portal."""
+    log("===== Convênios: Portal da Transparência =====")
+    destino = os.path.join(tempfile.gettempdir(), "convenios.zip")
+    hoje = datetime.now(FUSO_BR).date()
+    baixou = None
+    for atras in range(0, 12):
+        dia = hoje - timedelta(days=atras)
+        url = DOWNLOAD_CONVENIOS.format(data=dia.strftime("%Y%m%d"))
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) RepasseAberto/1.0"})
+            with urllib.request.urlopen(req, timeout=600) as r, open(destino, "wb") as f:
+                while True:
+                    bloco = r.read(1 << 20)
+                    if not bloco:
+                        break
+                    f.write(bloco)
+            if zipfile.is_zipfile(destino):
+                baixou = dia
+                break
+        except Exception as e:
+            log(f"   {dia:%d/%m/%Y}: indisponível ({e.__class__.__name__}).")
+    if not baixou:
+        log("Convênios: não consegui baixar o arquivo do Portal. Os dados antigos foram mantidos.")
+        return
+    log(f"Convênios: arquivo de {baixou:%d/%m/%Y} ({os.path.getsize(destino) // (1 << 20)} MB).")
+    siafi_ibge = mapa_siafi_ibge()
+    limite = (hoje - timedelta(days=365)).isoformat()
+    por_uf = {}
+    lidas = usadas = 0
+    with zipfile.ZipFile(destino) as z:
+        nomes = [n for n in z.namelist() if n.lower().endswith(".csv")]
+        log(f"Convênios: arquivos no ZIP: {nomes}")
+        nome_csv = next((n for n in nomes if "convenio" in normalizar(n) and "parcela" not in normalizar(n)), nomes[0] if nomes else None)
+        if not nome_csv:
+            log("Convênios: ZIP sem CSV.")
+            return
+        with z.open(nome_csv) as bruto:
+            leitor = csv.reader(io.TextIOWrapper(bruto, encoding="latin-1", newline=""), delimiter=";", quotechar='"')
+            cab = next(leitor)
+            log(f"Convênios: colunas: {cab}")
+            c_uf = coluna(cab, "uf")
+            c_mun = coluna(cab, "municipio", "siafi")
+            c_nmun = coluna(cab, "nome", "municipio")
+            c_sit = coluna(cab, "situacao")
+            c_obj = coluna(cab, "objeto")
+            c_org = coluna(cab, "nome", "orgao", "superior")
+            if c_org is None:
+                c_org = coluna(cab, "nome", "orgao")
+            c_conv = coluna(cab, "nome", "convenente")
+            c_valor = next((i for i, n in enumerate(cab) if normalizar(n) in ("valor convenio", "valor do convenio", "valor celebrado")), None)
+            if c_valor is None:
+                c_valor = coluna(cab, "valor", "convenio")
+            c_lib = coluna(cab, "valor", "liberado")
+            c_fim = coluna(cab, "final", "vigencia") or coluna(cab, "fim", "vigencia")
+            c_num = coluna(cab, "numero", "convenio")
+            obrig = (c_uf, c_mun, c_obj, c_valor)
+            if None in obrig:
+                log("Convênios: colunas inesperadas; nada foi alterado.")
+                return
+            for row in leitor:
+                lidas += 1
+                if len(row) <= max(i for i in obrig):
+                    continue
+                uf = row[c_uf].strip().upper()
+                if uf not in ufs:
+                    continue
+                ibge = None
+                try:
+                    ibge = siafi_ibge.get(int(row[c_mun]))
+                except ValueError:
+                    pass
+                if not ibge and c_nmun is not None:
+                    ibge = siafi_ibge.get((uf, normalizar(row[c_nmun]).replace("-", " ").replace("'", " ")))
+                if not ibge:
+                    continue
+                sit = row[c_sit].strip() if c_sit is not None else ""
+                fim = _data_br(row[c_fim]) if c_fim is not None else ""
+                em_exec = "execu" in normalizar(sit)
+                if not em_exec and (not fim or fim < limite):
+                    continue
+                valor = numero(row[c_valor])
+                lib = numero(row[c_lib]) if c_lib is not None else 0.0
+                if valor <= 0:
+                    continue
+                objeto = re.sub(r"\s+", " ", row[c_obj]).strip()
+                if len(objeto) > 220:
+                    objeto = objeto[:217].rstrip() + "…"
+                orgao = row[c_org].strip().title() if c_org is not None else ""
+                conv = row[c_conv].strip() if c_conv is not None else ""
+                if re.search(r"MUNIC[IÍ]PIO|PREFEITURA", conv.upper()):
+                    conv = ""     # a própria prefeitura: não precisa repetir
+                conv = conv.title()
+                usadas += 1
+                m = por_uf.setdefault(uf, {}).setdefault(ibge, {"lista": []})
+                m["lista"].append([objeto, orgao, round(valor, 2), round(lib, 2), sit.capitalize(), fim, conv,
+                                   row[c_num].strip() if c_num is not None else ""])
+    log(f"Convênios: {lidas} linhas lidas, {usadas} convênios usados.")
+    os.makedirs(PASTA_CONVENIOS, exist_ok=True)
+    agora = datetime.now(FUSO_BR).isoformat(timespec="seconds")
+    for uf in ufs:
+        ms = por_uf.get(uf, {})
+        saida = {}
+        for ibge, m in ms.items():
+            lista = sorted(m["lista"], key=lambda x: -x[2])
+            em_exec = [x for x in lista if "execu" in normalizar(x[4])]
+            saida[ibge] = {
+                "qtd": len(lista), "qtd_execucao": len(em_exec),
+                "valor": round(sum(x[2] for x in lista), 2), "liberado": round(sum(x[3] for x in lista), 2),
+                "lista": lista[:40],
+            }
+        with open(os.path.join(PASTA_CONVENIOS, uf + ".json"), "w", encoding="utf-8") as f:
+            json.dump({"uf": uf, "arquivo_de": baixou.isoformat(), "atualizado_em": agora,
+                       "fonte": "Portal da Transparência — Convênios", "municipios": saida},
+                      f, ensure_ascii=False, separators=(",", ":"))
+    try:
+        os.remove(destino)
+    except OSError:
+        pass
 
 
 # ----------------------------------------------------------------- principal
@@ -1137,6 +1323,10 @@ def main():
         return
     if fontes == "fundeb":
         atualizar_fundeb(ufs)
+        log("Concluído.")
+        return
+    if fontes == "convenios":
+        atualizar_convenios(ufs)
         log("Concluído.")
         return
 
@@ -1185,6 +1375,10 @@ def main():
             log(f"Fundeb: erro inesperado ({e.__class__.__name__}: {e}). Os dados antigos foram mantidos.")
     if fontes == "todas":
         atualizar_pdde(ufs)
+        try:
+            atualizar_convenios(ufs)
+        except Exception as e:
+            log(f"Convênios: erro inesperado ({e.__class__.__name__}: {e}). Os dados antigos foram mantidos.")
 
     with open(os.path.join(PASTA, "status.json"), "w", encoding="utf-8") as f:
         json.dump({"ultima_execucao": datetime.now(FUSO_BR).isoformat(timespec="seconds"),
