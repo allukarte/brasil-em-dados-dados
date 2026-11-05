@@ -1186,7 +1186,7 @@ def atualizar_convenios(ufs):
     destino = os.path.join(tempfile.gettempdir(), "convenios.zip")
     hoje = datetime.now(FUSO_BR).date()
     baixou = None
-    for atras in range(0, 12):
+    for atras in range(0, 45):
         dia = hoje - timedelta(days=atras)
         url = DOWNLOAD_CONVENIOS.format(data=dia.strftime("%Y%m%d"))
         try:
