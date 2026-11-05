@@ -21,6 +21,7 @@ on:
           - portal
           - pdde
           - fundeb
+          - convenios
 
 permissions:
   contents: write
