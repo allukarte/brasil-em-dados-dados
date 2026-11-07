@@ -668,10 +668,8 @@ def processar_mes(caminho_zip, siafi_ibge):
             c_func = next((i for i, c in enumerate(cab) if normalizar(c) in ("nome funcao", "funcao")), None)
             c_org = coluna(cab, "orgao", "superior")
             c_ttr = coluna(cab, "tipo", "transferencia")
-            c_diag = [i for i, c in enumerate(cab) if any(k in normalizar(c) for k in
-                                                          ("transferencia", "modalidade", "instrumento", "convenio", "linguagem"))]
-            diag = {}
-            log("   colunas: " + " | ".join(cab))
+            c_mod = coluna(cab, "codigo", "modalidade")
+            fora = {}   # modalidade -> valor deixado de fora (saúde e assistência)
             if None in (c_uf, c_mun, c_acao, c_fav, c_val):
                 log(f"   colunas inesperadas no arquivo: {cab}")
                 return None
@@ -708,11 +706,13 @@ def processar_mes(caminho_zip, siafi_ibge):
                 valor = numero(row[c_val])
                 if not valor:
                     continue
-                if prog in ("saude", "assist"):
-                    for i in c_diag:
-                        if i < len(row):
-                            k = (prog, cab[i], row[i].strip()[:60])
-                            diag[k] = diag.get(k, 0.0) + valor
+                if prog in ("saude", "assist") and c_mod is not None and c_mod < len(row):
+                    # Só entra o repasse fundo a fundo para o município (modalidade 41). Ficam de fora
+                    # convênios (40), pagamentos direto a hospitais e entidades privadas (50), estados (30/31) etc.
+                    mod = row[c_mod].strip()
+                    if mod != "41":
+                        fora[mod] = fora.get(mod, 0.0) + valor
+                        continue
                 uf = row[c_uf].strip().upper()
                 try:
                     ibge = siafi_ibge.get(int(row[c_mun]))
@@ -786,8 +786,9 @@ def processar_mes(caminho_zip, siafi_ibge):
                 item[1] += valor
     log(f"   linhas: {linhas_pdde} de PDDE, {linhas_pnae} de merenda e {linhas_saude} de saúde "
         f"({sem_mun} sem município identificado). Coluna de função: {'sim' if c_func is not None else 'não'}.")
-    for k, v in sorted(diag.items(), key=lambda kv: (kv[0][0], kv[0][1], -kv[1]))[:40]:
-        log(f"   diag {k[0]} · {k[1]} = {k[2]} → {v / 1e6:.1f} mi")
+    if fora:
+        log("   saúde e assistência fora do total (não são fundo a fundo para o município), por modalidade: " +
+            "; ".join(f"{k} → {v / 1e6:.1f} mi" for k, v in sorted(fora.items(), key=lambda kv: -kv[1])))
     log(f"   assistência social: {linhas_assist} linhas; maiores ações: " +
         "; ".join(f"{k[:70]} → {v / 1e6:.1f} mi" for k, v in sorted(acoes_assist.items(), key=lambda kv: -kv[1])[:6]))
     if nao_achados:
@@ -812,7 +813,7 @@ def processar_mes(caminho_zip, siafi_ibge):
     return resumo
 
 
-VERSAO_CACHE = "v8"   # mudar este valor obriga o robô a reprocessar todos os meses
+VERSAO_CACHE = "v9"   # mudar este valor obriga o robô a reprocessar todos os meses
 
 
 def caminho_mensal(ano, mes):
