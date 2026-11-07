@@ -648,6 +648,7 @@ def processar_mes(caminho_zip, siafi_ibge):
     linhas_pdde = linhas_pnae = linhas_saude = linhas_assist = sem_mun = 0
     acoes_assist = {}
     acoes_edu = {}
+    diag_edu = {}
     nao_achados = {}
     sem_local = {}   # uf -> cnpj -> [nome, valor]  (pagamentos a escolas sem município no arquivo)
     with zipfile.ZipFile(caminho_zip) as z:
@@ -713,6 +714,9 @@ def processar_mes(caminho_zip, siafi_ibge):
                 valor = numero(row[c_val])
                 if not valor:
                     continue
+                if funcao == "educacao":
+                    kd = (prog, row[c_mod].strip() if c_mod is not None and c_mod < len(row) else "?", acao[:45])
+                    diag_edu[kd] = diag_edu.get(kd, 0.0) + valor
                 if prog in ("saude", "assist", "edu") and c_mod is not None and c_mod < len(row):
                     # Só entra o repasse fundo a fundo para o município (modalidade 41). Ficam de fora
                     # convênios (40), pagamentos direto a hospitais e entidades privadas (50), estados (30/31) etc.
@@ -804,6 +808,7 @@ def processar_mes(caminho_zip, siafi_ibge):
     if fora:
         log("   saúde e assistência fora do total (não são fundo a fundo para o município), por modalidade: " +
             "; ".join(f"{k} → {v / 1e6:.1f} mi" for k, v in sorted(fora.items(), key=lambda kv: -kv[1])))
+    log("   diag educação: " + "; ".join(f"{k} → {v / 1e6:.1f} mi" for k, v in sorted(diag_edu.items(), key=lambda kv: -kv[1])[:30]))
     log("   outros programas da educação: " +
         "; ".join(f"{k[:70]} → {v / 1e6:.1f} mi" for k, v in sorted(acoes_edu.items(), key=lambda kv: -kv[1])[:12]))
     log(f"   assistência social: {linhas_assist} linhas; maiores ações: " +
