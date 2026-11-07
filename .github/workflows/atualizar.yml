@@ -22,6 +22,7 @@ on:
           - pdde
           - fundeb
           - convenios
+          - estaduais
 
 permissions:
   contents: write
