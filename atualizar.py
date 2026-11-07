@@ -836,7 +836,7 @@ def atualizar_pdde(ufs):
     meses_ok = {}
     for ano in (hoje.year,):
         for mes in range(1, 13):
-            if (ano, mes) > (hoje.year, hoje.month):
+            if (ano, mes) >= (hoje.year, hoje.month):   # só meses fechados, como no Tesouro
                 break
             destino = caminho_mensal(ano, mes)
             recente = (hoje.year * 12 + hoje.month) - (ano * 12 + mes) <= 2   # meses recentes podem ser revisados
