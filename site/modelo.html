@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Repasse Aberto</title>
+<meta name="description" content="Repasse Aberto: transparência pública, direitos sociais e informação para todos.">
+</head>
+<body style="margin:0">
+<!-- ===================== INÍCIO DO CÓDIGO PARA O BLOGGER ===================== -->
+<script>/* Portal só na página inicial; nas postagens (ex.: Notas de atualização) mostra só o texto */
+if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.textContent="#HTML1{display:none!important}";document.head.appendChild(s);}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+/* ===== Repasse Aberto — estilos limitados a #bd para não conflitar com o tema do Blogger ===== */
+#bd{
+  container-type:inline-size; container-name:bd;
+  --cobalto:#0C2A63; --cobalto-2:#13377D; --cobalto-3:#1C4594;
+  --anil:#2F6FDE; --papel:#F4F7FC; --branco:#FFFFFF;
+  --tinta:#102033; --tinta-2:#4A5A70; --linha:#DCE4F0; --linha-2:#EDF2F8;
+  --ouro:#F2C14E;
+  --norte:#1F9D6B; --nordeste:#E8A317; --centro:#8A5CD1; --sudeste:#3C82F0; --sul:#D8504D;
+  --display:"Bricolage Grotesque","Trebuchet MS",sans-serif;
+  --texto:"Atkinson Hyperlegible","Segoe UI",Roboto,Arial,sans-serif;
+  font-family:var(--texto); font-size:17px; line-height:1.55; color:var(--tinta);
+  background:var(--papel); -webkit-font-smoothing:antialiased;
+}
+#bd *,#bd *::before,#bd *::after{box-sizing:border-box}
+#bd h1,#bd h2,#bd h3,#bd h4,#bd p{margin:0}
+#bd a{color:var(--anil)}
+#bd .bd-wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+#bd .bd-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#bd :focus-visible{outline:3px solid var(--ouro);outline-offset:2px;border-radius:4px}
+#bd button{font-family:inherit}
+
+/* Aviso superior */
+#bd .bd-aviso-topo{background:#081E49;color:#B9C8E4;font-size:13.5px}
+#bd .bd-aviso-topo .bd-wrap{padding-top:7px;padding-bottom:7px}
+#bd .bd-aviso-topo strong{color:#fff;font-weight:700}
+
+/* Cabeçalho */
+#bd .bd-cab{background:var(--cobalto);color:#fff;position:sticky;top:0;z-index:40;border-bottom:1px solid rgba(255,255,255,.08)}
+#bd .bd-cab .bd-wrap{display:flex;align-items:center;gap:24px;min-height:72px}
+#bd .bd-marca{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none;flex-shrink:0}
+#bd .bd-marca svg{width:38px;height:38px;flex-shrink:0}
+#bd .bd-marca-nome{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.6px;line-height:1}
+#bd .bd-marca-sub{display:block;font-size:12.5px;color:#AFC1E3;margin-top:4px;line-height:1.2}
+#bd .bd-nav{margin-left:auto}
+#bd .bd-nav ul{display:flex;gap:4px;list-style:none;margin:0;padding:0}
+#bd .bd-nav a{display:block;color:#D9E3F5;text-decoration:none;font-size:15px;padding:8px 11px;border-radius:999px;white-space:nowrap}
+#bd .bd-nav a:hover{color:#fff;background:rgba(255,255,255,.08)}
+#bd .bd-nav a[aria-current="page"]{color:var(--cobalto);background:#fff;font-weight:700}
+#bd .bd-acoes{display:flex;gap:8px}
+#bd .bd-icone{width:42px;height:42px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:transparent;color:#fff;display:grid;place-items:center;cursor:pointer}
+#bd .bd-icone:hover{background:rgba(255,255,255,.1)}
+#bd .bd-icone svg{width:20px;height:20px}
+#bd .bd-menu{display:none}
+#bd .bd-busca{background:var(--cobalto-2);max-height:0;overflow:hidden;transition:max-height .25s ease}
+#bd .bd-busca.bd-aberta{max-height:140px}
+#bd .bd-busca form{display:flex;gap:10px;padding:14px 0 6px}
+#bd .bd-busca input{flex:1;min-width:0;font:inherit;font-size:16px;padding:12px 16px;border-radius:999px;border:0}
+#bd .bd-busca-msg{color:#C9D6EE;font-size:14px;padding-bottom:12px;min-height:1.4em}
+
+/* Botões e campos */
+#bd .bd-btn{font-weight:700;font-size:16px;border:0;border-radius:999px;padding:13px 24px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--ouro);color:var(--cobalto)}
+#bd .bd-btn:hover{background:#FFD36B}
+#bd .bd-btn:disabled{background:#5E739C;color:#C9D3E6;cursor:not-allowed}
+#bd .bd-btn svg{width:18px;height:18px}
+
+/* Abertura com o mapa */
+#bd .bd-abertura{background:var(--cobalto);color:#fff;position:relative;overflow:hidden}
+#bd .bd-abertura::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 70% at 72% 45%,rgba(60,130,240,.28),transparent 70%);pointer-events:none}
+#bd .bd-abertura .bd-wrap{position:relative;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:40px;align-items:center;padding-top:56px;padding-bottom:64px}
+#bd .bd-titulo{font-family:var(--display);font-weight:800;font-size:clamp(34px,5.2cqi,64px);line-height:1.02;letter-spacing:-1.8px;max-width:12ch}
+#bd .bd-intro{color:#C6D3EC;font-size:18.5px;margin-top:20px;max-width:46ch}
+#bd .bd-atualiza{display:inline-flex;align-items:center;gap:8px;margin-top:14px;font-size:14.5px;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 14px}
+#bd .bd-atualiza::before{content:"";width:8px;height:8px;border-radius:50%;background:#F2C14E}
+#bd .bd-consulta{margin-top:32px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:20px}
+#bd .bd-campos{display:grid;grid-template-columns:1fr 1.5fr;gap:12px;margin-bottom:14px}
+#bd .bd-consulta label{display:block;font-size:14px;color:#C6D3EC;margin-bottom:6px}
+#bd .bd-consulta select{width:100%;font:inherit;font-size:16px;color:var(--tinta);background:#fff;border:0;border-radius:12px;padding:12px 14px;appearance:auto}
+#bd .bd-consulta select:disabled{background:#C9D3E6;color:#4F6185}
+#bd .bd-tipo{margin-bottom:16px}
+#bd .bd-tipo-rot{font-size:14px;color:#C6D3EC;margin:0 0 8px}
+#bd .bd-tipo-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:rgba(0,0,0,.18);border-radius:14px;padding:5px}
+#bd .bd-tipo-btns button{font:inherit;font-size:16px;font-weight:700;color:#DCE6F7;background:transparent;border:0;border-radius:10px;padding:10px 12px;cursor:pointer;line-height:1.2}
+#bd .bd-tipo-btns button small{display:block;font-size:13px;font-weight:400;color:#AFC0DD;margin-top:2px}
+#bd .bd-tipo-btns button[aria-pressed="true"]{background:#fff;color:var(--cobalto)}
+#bd .bd-tipo-btns button[aria-pressed="true"] small{color:#4A5872}
+#bd .bd-tipo-btns button:focus-visible{outline:3px solid var(--ouro);outline-offset:2px}
+#bd .bd-status{font-size:14px;color:#AFC1E3;margin-top:12px;min-height:1.4em}
+#bd .bd-status.bd-erro{color:#FFB4A9}
+
+#bd .bd-mapa-area{position:relative}
+#bd .bd-mapa{display:block;width:100%;height:auto;max-width:600px;margin:0 auto;overflow:visible}
+#bd .bd-uf path{stroke:var(--cobalto);stroke-width:1.2;stroke-linejoin:round;cursor:pointer;transition:fill .2s,opacity .2s,filter .2s}
+#bd .bd-uf:hover path,#bd .bd-uf:focus path{filter:brightness(1.18)}
+#bd .bd-uf:focus{outline:none}
+#bd .bd-uf:focus-visible path{stroke:var(--ouro);stroke-width:3}
+#bd .bd-uf text,#bd .bd-rotulo text{font-family:var(--texto);font-weight:700;font-size:13px;fill:#fff;pointer-events:none;text-anchor:middle;dominant-baseline:central}
+#bd .bd-rotulo line{stroke:rgba(255,255,255,.45);stroke-width:1}
+#bd .bd-rotulo text{text-anchor:start;font-size:12px}
+#bd .bd-mapa.bd-com-sel .bd-uf path{opacity:.38}
+#bd .bd-mapa.bd-com-sel .bd-uf.bd-sel path{opacity:1;fill:#fff;stroke:var(--ouro);stroke-width:3}
+#bd .bd-mapa.bd-com-sel .bd-uf.bd-sel text{fill:var(--cobalto)}
+#bd .bd-mapa.bd-regiao .bd-uf path{opacity:.28}
+#bd .bd-mapa.bd-regiao .bd-uf.bd-na-regiao path{opacity:1}
+#bd .bd-dica{position:absolute;pointer-events:none;background:#fff;color:var(--cobalto);font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;box-shadow:0 6px 20px rgba(5,20,50,.35);transform:translate(-50%,-140%);white-space:nowrap;opacity:0;transition:opacity .12s}
+#bd .bd-dica.bd-vis{opacity:1}
+#bd .bd-legenda{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;list-style:none;margin:18px 0 0;padding:0}
+#bd .bd-legenda button{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:#E4EBF7;font-size:14px;padding:6px 14px 6px 10px;border-radius:999px;cursor:pointer}
+#bd .bd-legenda button:hover,#bd .bd-legenda button[aria-pressed="true"]{background:rgba(255,255,255,.16)}
+#bd .bd-legenda i{width:12px;height:12px;border-radius:50%;display:inline-block}
+
+/* Entrada do mapa: o único momento animado da página */
+@keyframes bd-surge{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+#bd .bd-mapa.bd-entrada .bd-uf{animation:bd-surge .6s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--atraso,0s)}
+
+/* Seções */
+#bd .bd-secao{padding:72px 0}
+#bd section{scroll-margin-top:72px}
+#bd .bd-secao-titulo{font-family:var(--display);font-weight:800;font-size:clamp(28px,3.6cqi,42px);letter-spacing:-1px;line-height:1.08;color:var(--cobalto)}
+#bd .bd-secao-intro{color:var(--tinta-2);margin-top:10px;max-width:60ch}
+
+/* Extrato do município */
+#bd .bd-extrato-grade{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:28px;margin-top:32px;align-items:start}
+#bd .bd-extrato{background:#fff;border-radius:6px 6px 0 0;box-shadow:0 1px 0 var(--linha),0 18px 40px -24px rgba(12,42,99,.35);position:relative;padding:34px 34px 44px}
+#bd .bd-extrato::after{content:"";position:absolute;left:0;right:0;bottom:-12px;height:12px;background:linear-gradient(-45deg,transparent 8px,#fff 0) 0 0/16px 12px,linear-gradient(45deg,transparent 8px,#fff 0) 0 0/16px 12px;filter:drop-shadow(0 2px 0 var(--linha))}
+#bd .bd-ext-topo{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start;padding-bottom:22px;border-bottom:2px solid var(--tinta)}
+#bd .bd-ext-tipo{font-size:14px;color:var(--tinta-2)}
+#bd .bd-ext-nome{font-family:var(--display);font-weight:800;font-size:clamp(28px,3.4cqi,40px);letter-spacing:-1px;line-height:1.05;color:var(--cobalto);margin-top:4px}
+#bd .bd-ext-meta{margin-top:10px;font-size:15px;color:var(--tinta-2);display:flex;flex-wrap:wrap;gap:4px 18px}
+#bd .bd-ext-meta b{color:var(--tinta);font-weight:700}
+#bd .bd-aviso{margin-top:16px;padding:10px 14px;border-radius:10px;background:var(--linha-2);color:var(--tinta-2);font-size:14.5px}
+#bd .bd-aviso b{color:var(--tinta)}
+#bd .bd-selo{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;border-radius:999px;padding:6px 12px;white-space:nowrap}
+#bd .bd-selo::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+#bd .bd-selo-ok{background:#E3F4EC;color:#14724C}
+#bd .bd-selo-demo{background:#FFF3D6;color:#8A5A00}
+#bd .bd-selo-neutro{background:var(--linha-2);color:var(--tinta-2)}
+#bd .bd-grupo{padding-top:28px}
+#bd .bd-grupo-cab{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;margin-bottom:8px;background:var(--c);border-radius:10px;padding:10px 16px}
+#bd .bd-grupo-cab i{width:10px;height:10px;border-radius:50%;display:inline-block;background:rgba(255,255,255,.85)}
+#bd .bd-grupo-cab h3{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.2px;color:#fff;margin:0}
+#bd .bd-grupo-cab span{margin-left:auto;font-size:14px;color:rgba(255,255,255,.9);white-space:nowrap}
+#bd .bd-linhas{margin:0;padding:0}
+#bd .bd-linha{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:9px 0;border-bottom:1px dashed var(--linha)}
+#bd .bd-linha dt{color:var(--tinta-2);min-width:150px}
+#bd .bd-linha dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+#bd .bd-linha dd small{display:block;font-weight:400;font-size:13.5px;color:var(--tinta-2)}
+#bd .bd-linha.bd-total{border-bottom:0;border-top:2px solid var(--tinta);margin-top:4px;padding-top:12px}
+#bd .bd-linha.bd-total dt{color:var(--tinta);font-weight:700}
+#bd .bd-linha.bd-total dd{font-size:19px}
+#bd .bd-sem{color:#8C9AAE !important;font-weight:400 !important;font-style:italic}
+#bd .bd-escolas{border-bottom:1px dashed var(--linha);padding:2px 0 10px}
+#bd .bd-escolas summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#14724C;font-size:15px;padding:6px 0}
+#bd .bd-escolas summary::-webkit-details-marker{display:none}
+#bd .bd-escolas summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+#bd .bd-escolas[open] summary::before{transform:rotate(45deg)}
+#bd .bd-escolas input{width:100%;margin:6px 0 8px;padding:9px 12px;border:1px solid var(--linha);border-radius:10px;font:inherit;font-size:15px}
+#bd .bd-escolas ol{list-style:none;margin:0;padding:0;max-height:360px;overflow:auto;counter-reset:e}
+#bd .bd-escolas li{display:flex;justify-content:space-between;gap:12px;padding:7px 4px;font-size:14.5px;border-bottom:1px solid var(--linha-2)}
+#bd .bd-escolas li span{color:var(--tinta)}
+#bd .bd-escolas li b{font-variant-numeric:tabular-nums;white-space:nowrap}
+#bd .bd-mais p{font-size:14.5px;color:var(--tinta-2);margin:4px 0 8px}
+#bd .bd-mais .bd-det-tit{margin:12px 0 2px;color:var(--tinta)}
+#bd .bd-mais .bd-det-tit:first-of-type{margin-top:4px}
+#bd .bd-mais p b{color:var(--tinta)}
+#bd .bd-escolas .bd-nota-esc{font-size:13px;color:var(--tinta-2);margin-top:8px}
+#bd .bd-fontes{margin-top:26px;font-size:14px;color:var(--tinta-2)}
+#bd .bd-fontes a{font-weight:700;text-decoration:none}
+#bd .bd-fontes a:hover{text-decoration:underline}
+
+#bd .bd-resumo{background:var(--cobalto);color:#fff;border-radius:20px;padding:24px;position:sticky;top:96px}
+#bd .bd-resumo h3{font-size:16px;font-weight:400;color:#C6D3EC}
+#bd .bd-resumo-valor{font-family:var(--display);font-weight:800;font-size:clamp(32px,3.2cqi,42px);letter-spacing:-1.2px;line-height:1.05;margin-top:6px;font-variant-numeric:tabular-nums}
+#bd .bd-resumo-sub{color:#C6D3EC;font-size:16px;margin-top:6px}
+#bd .bd-barra{display:flex;height:14px;border-radius:999px;overflow:hidden;margin-top:22px;background:rgba(255,255,255,.12)}
+#bd .bd-barra span{display:block;height:100%}
+#bd .bd-barra-leg{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:8px;font-size:16px}
+#bd .bd-barra-leg li{display:flex;align-items:center;gap:10px}
+#bd .bd-barra-leg i{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+#bd .bd-barra-leg b{margin-left:auto;font-variant-numeric:tabular-nums}
+#bd .bd-acoes{display:grid;gap:8px;margin-top:20px}
+#bd .bd-acoes a,#bd .bd-acoes button{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px 14px;border-radius:12px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff}
+#bd .bd-acoes a.bd-zap{background:#25D366;border-color:#25D366;color:#0B3D20}
+#bd .bd-acoes a:hover,#bd .bd-acoes button:hover{filter:brightness(1.08)}
+@media print{
+  body *{visibility:hidden !important}
+  #bd-extrato,#bd-extrato *{visibility:visible !important}
+  #bd-extrato{position:absolute;left:0;top:0;width:100%}
+  #bd .bd-acoes,#bd .bd-escolas input{display:none !important}
+  #bd .bd-extrato-grade{grid-template-columns:1fr !important}
+  #bd .bd-resumo{position:static !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #bd .bd-grupo-cab{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+#bd .bd-resumo-nota{margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.16);font-size:15.5px;color:#C6D3EC}
+#bd .bd-vazio{text-align:left}
+#bd .bd-vazio p{color:var(--tinta-2);margin-top:12px;max-width:44ch}
+#bd .bd-carregando{color:var(--tinta-2);padding:40px 0}
+
+/* Temas */
+#bd .bd-temas{background:#fff;border-top:1px solid var(--linha);border-bottom:1px solid var(--linha)}
+#bd .bd-temas-grade{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:32px;border-top:1px solid var(--linha);border-left:1px solid var(--linha)}
+#bd .bd-tema{display:flex;flex-direction:column;gap:14px;padding:26px 22px 24px;color:var(--tinta);text-decoration:none;border-right:1px solid var(--linha);border-bottom:1px solid var(--linha);position:relative;background:#fff}
+#bd .bd-tema::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--c);transform:scaleX(0);transform-origin:left;transition:transform .2s}
+#bd .bd-tema:hover::before,#bd .bd-tema:focus-visible::before{transform:scaleX(1)}
+#bd .bd-tema-ico{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--cf);color:var(--c)}
+#bd .bd-tema-ico svg{width:24px;height:24px}
+#bd .bd-tema h3{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:-.3px}
+#bd .bd-tema p{font-size:15px;color:var(--tinta-2)}
+#bd .bd-tema-fonte{margin-top:auto;font-size:13.5px;color:var(--c);font-weight:700}
+#bd .bd-tema.bd-tema-guia{background:var(--cobalto);color:#fff}
+#bd .bd-tema.bd-tema-guia p{color:#C6D3EC}
+#bd .bd-tema.bd-tema-guia .bd-tema-fonte{color:var(--ouro)}
+
+/* Como consultar */
+#bd .bd-passos{list-style:none;margin:32px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:28px;counter-reset:passo}
+#bd .bd-passos li{counter-increment:passo;padding-top:20px;border-top:2px solid var(--cobalto)}
+#bd .bd-passos li::before{content:counter(passo);font-family:var(--display);font-weight:800;font-size:44px;line-height:1;color:var(--anil);display:block;margin-bottom:12px}
+#bd .bd-passos h3{font-family:var(--display);font-weight:700;font-size:21px;letter-spacing:-.3px;color:var(--cobalto);margin-bottom:6px}
+#bd .bd-passos p{color:var(--tinta-2);font-size:16px}
+
+/* Rodapé */
+#bd .bd-rodape{background:#081E49;color:#B9C8E4;padding:48px 0 28px;font-size:15px}
+#bd .bd-rodape-grade{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:32px}
+#bd .bd-rodape h3{font-family:var(--display);font-weight:700;color:#fff;font-size:18px;margin-bottom:12px}
+#bd .bd-rodape ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+#bd .bd-rodape a{color:#9FC2FF;text-decoration:none}
+#bd .bd-rodape a:hover{text-decoration:underline}
+#bd .bd-rodape-base{margin-top:36px;padding-top:18px;border-top:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13.5px}
+
+/* Responsivo */
+@media (max-width:1240px){
+  #bd .bd-marca-sub{display:none}
+}
+@media (max-width:1060px){
+  #bd .bd-temas-grade{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:920px){
+  #bd .bd-menu{display:grid}
+  #bd .bd-nav{display:none;position:absolute;left:0;right:0;top:100%;background:var(--cobalto);margin:0;padding:8px 24px 18px;border-top:1px solid rgba(255,255,255,.1)}
+  #bd .bd-nav.bd-aberta{display:block}
+  #bd .bd-nav ul{flex-direction:column}
+  #bd .bd-nav a{padding:12px 14px}
+  #bd .bd-acoes{margin-left:auto}
+  #bd .bd-abertura .bd-wrap{grid-template-columns:1fr;padding-top:40px;padding-bottom:48px}
+  #bd .bd-titulo{max-width:16ch}
+  #bd .bd-extrato-grade{grid-template-columns:1fr}
+  #bd .bd-resumo{position:static}
+  #bd .bd-passos{grid-template-columns:1fr;gap:24px}
+  #bd .bd-rodape-grade{grid-template-columns:1fr}
+}
+@media (max-width:600px){
+  #bd{font-size:16px}
+  #bd .bd-wrap{padding:0 16px}
+  #bd .bd-marca-sub{display:none}
+  #bd .bd-marca-nome{font-size:21px}
+  #bd .bd-campos{grid-template-columns:1fr}
+  #bd .bd-consulta .bd-btn{width:100%}
+  #bd .bd-secao{padding:52px 0}
+  #bd .bd-extrato{padding:24px 18px 36px}
+  #bd .bd-linha{flex-direction:column;align-items:flex-start;gap:2px}
+  #bd .bd-linha dd{text-align:left;white-space:normal;font-size:17px}
+  #bd .bd-linha.bd-total dd{font-size:19px}
+  #bd .bd-temas-grade{grid-template-columns:1fr}
+  #bd .bd-rotulo text{font-size:15px}
+  #bd .bd-uf text{font-size:15px}
+}
+/* Responsivo pelo espaço do portal (funciona com qualquer zoom ou barra lateral) */
+@container bd (max-width:1240px){
+  #bd .bd-marca-sub{display:none}
+}
+@container bd (max-width:1060px){
+  #bd .bd-temas-grade{grid-template-columns:repeat(2,1fr)}
+}
+@container bd (max-width:1080px){
+  #bd .bd-menu{display:grid}
+  #bd .bd-nav{display:none;position:absolute;left:0;right:0;top:100%;background:var(--cobalto);margin:0;padding:8px 24px 18px;border-top:1px solid rgba(255,255,255,.1)}
+  #bd .bd-nav.bd-aberta{display:block}
+  #bd .bd-nav ul{flex-direction:column}
+  #bd .bd-nav a{padding:12px 14px}
+  #bd .bd-acoes{margin-left:auto}
+  #bd .bd-abertura .bd-wrap{grid-template-columns:1fr;padding-top:40px;padding-bottom:48px}
+  #bd .bd-titulo{max-width:16ch}
+  #bd .bd-extrato-grade{grid-template-columns:1fr}
+  #bd .bd-resumo{position:static}
+  #bd .bd-passos{grid-template-columns:1fr;gap:24px}
+  #bd .bd-rodape-grade{grid-template-columns:1fr}
+}
+@container bd (max-width:600px){
+  #bd .bd-wrap{padding:0 16px}
+  #bd .bd-marca-sub{display:none}
+  #bd .bd-marca-nome{font-size:21px}
+  #bd .bd-campos{grid-template-columns:1fr}
+  #bd .bd-consulta .bd-btn{width:100%}
+  #bd .bd-secao{padding:52px 0}
+  #bd .bd-extrato{padding:24px 18px 36px}
+  #bd .bd-linha{flex-direction:column;align-items:flex-start;gap:2px}
+  #bd .bd-linha dd{text-align:left;white-space:normal;font-size:17px}
+  #bd .bd-linha.bd-total dd{font-size:19px}
+  #bd .bd-temas-grade{grid-template-columns:1fr}
+  #bd .bd-rotulo text{font-size:15px}
+  #bd .bd-uf text{font-size:15px}
+}
+#bd .bd-var{font-weight:700}
+#bd .bd-var-mais{color:#14724C}
+#bd .bd-var-menos{color:#B23B38}
+#bd .bd-conv li{display:block;padding:10px 4px}
+#bd .bd-conv li b{display:block;color:var(--tinta);font-variant-numeric:normal;white-space:normal}
+#bd .bd-conv li small{display:block;color:var(--tinta-2);font-size:13.5px;margin-top:2px}
+@media (prefers-reduced-motion:reduce){
+  #bd *{transition:none !important;animation:none !important}
+}
+</style>
+
+<div id="bd">
+  <div class="bd-aviso-topo"><div class="bd-wrap">Portal independente de informação pública, <strong>sem vínculo com o governo</strong>. Os dados vêm das fontes oficiais citadas em cada consulta.</div></div>
+
+  <header class="bd-cab">
+    <div class="bd-wrap">
+      <a class="bd-marca" href="#bd-inicio" aria-label="Repasse Aberto, início">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="12" fill="#F2C14E"/><rect x="9" y="22" width="5" height="9" rx="1.5" fill="#0C2A63"/><rect x="17.5" y="15" width="5" height="16" rx="1.5" fill="#0C2A63"/><rect x="26" y="9" width="5" height="22" rx="1.5" fill="#0C2A63"/></svg>
+        <span><span class="bd-marca-nome">Repasse Aberto</span><span class="bd-marca-sub">transparência pública, direitos sociais e informação para todos</span></span>
+      </a>
+      <nav class="bd-nav" id="bd-nav" aria-label="Menu principal">
+        <ul>
+          <li><a href="#bd-inicio" aria-current="page">Início</a></li>
+          <li><a href="#bd-temas">Educação</a></li>
+          <li><a href="#bd-extrato">Programas federais</a></li>
+          <li><a href="#bd-extrato">Transferências</a></li>
+          <li><a href="#bd-como">Como consultar</a></li>
+          <li><a href="#bd-sobre">Sobre</a></li>
+        </ul>
+      </nav>
+      <div class="bd-acoes">
+        <button type="button" class="bd-icone" id="bd-busca-btn" aria-label="Abrir pesquisa" aria-expanded="false" aria-controls="bd-busca">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        </button>
+        <button type="button" class="bd-icone bd-menu" id="bd-menu-btn" aria-label="Abrir menu" aria-expanded="false" aria-controls="bd-nav">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="bd-busca" id="bd-busca">
+      <div class="bd-wrap">
+        <form id="bd-busca-form" role="search">
+          <label for="bd-busca-input" class="bd-sr">Pesquisar estado ou município</label>
+          <input type="search" id="bd-busca-input" placeholder="Digite um estado (Bahia, PE) ou uma cidade do estado escolhido" autocomplete="off">
+          <button type="submit" class="bd-btn">Pesquisar</button>
+        </form>
+        <div class="bd-busca-msg" id="bd-busca-msg" aria-live="polite"></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="bd-abertura" id="bd-inicio">
+      <div class="bd-wrap">
+        <div>
+          <h1 class="bd-titulo">Veja quanto dinheiro público chega à sua cidade.</h1>
+          <p class="bd-intro">Escolha um estado no mapa e depois o município. Você recebe o extrato com Fundeb, verba das escolas, merenda, saúde, repasses da União, Bolsa Família e BPC, e também os repasses do estado, como ICMS e IPVA, tirados das fontes oficiais.</p>
+          <p class="bd-atualiza" id="bd-atualiza">Dados oficiais, atualizados toda segunda-feira</p>
+          <div class="bd-consulta">
+            <form id="bd-form">
+              <div class="bd-tipo">
+                <p class="bd-tipo-rot" id="bd-tipo-rot">Quais repasses você quer ver?</p>
+                <div class="bd-tipo-btns" role="group" aria-labelledby="bd-tipo-rot">
+                  <button type="button" data-tipo="federal" aria-pressed="true">Federais<small>dinheiro da União</small></button>
+                  <button type="button" data-tipo="estadual" aria-pressed="false">Estaduais<small>dinheiro do estado</small></button>
+                </div>
+              </div>
+              <div class="bd-campos">
+                <div>
+                  <label for="bd-uf">Estado</label>
+                  <select id="bd-uf"><option value="">Selecione</option></select>
+                </div>
+                <div>
+                  <label for="bd-mun">Município</label>
+                  <select id="bd-mun" disabled><option value="">Escolha o estado primeiro</option></select>
+                </div>
+              </div>
+              <button type="submit" class="bd-btn" id="bd-buscar" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                Ver extrato do município
+              </button>
+              <p class="bd-status" id="bd-status" aria-live="polite"></p>
+            </form>
+          </div>
+        </div>
+
+        <div class="bd-mapa-area" id="bd-mapa-area">
+          <svg class="bd-mapa bd-entrada" id="bd-mapa" viewBox="0 0 660 625" role="group" aria-label="Mapa do Brasil por estado. Selecione um estado."></svg>
+          <div class="bd-dica" id="bd-dica" aria-hidden="true"></div>
+          <ul class="bd-legenda" id="bd-legenda" aria-label="Regiões do Brasil"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="bd-secao" id="bd-extrato">
+      <div class="bd-wrap">
+        <h2 class="bd-secao-titulo">Extrato do município</h2>
+        <p class="bd-secao-intro" id="bd-secao-intro">Tudo o que a União repassou à cidade no ano e o que foi pago em programas sociais no mês mais recente.</p>
+        <div class="bd-extrato-grade" id="bd-extrato-conteudo" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="bd-secao bd-temas" id="bd-temas">
+      <div class="bd-wrap">
+        <h2 class="bd-secao-titulo">Explore por tema</h2>
+        <p class="bd-secao-intro">Guias e consultas oficiais organizados pelos direitos e serviços públicos.</p>
+        <div class="bd-temas-grade" id="bd-temas-lista"></div>
+      </div>
+    </section>
+
+    <section class="bd-secao" id="bd-como">
+      <div class="bd-wrap">
+        <h2 class="bd-secao-titulo">Como consultar</h2>
+        <ol class="bd-passos">
+          <li><h3>Escolha o lugar</h3><p>Clique no estado no mapa ou use os campos de busca. Depois selecione o município.</p></li>
+          <li><h3>Leia o extrato</h3><p>Veja o Fundeb, o FPM e os outros repasses do ano, e o Bolsa Família e o BPC do último mês publicado.</p></li>
+          <li><h3>Confira na fonte</h3><p>Cada bloco do extrato aponta para o portal oficial onde o número pode ser verificado e baixado.</p></li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bd-rodape" id="bd-sobre">
+    <div class="bd-wrap">
+      <div class="bd-rodape-grade">
+        <div>
+          <h3>Sobre o Repasse Aberto</h3>
+          <p>Projeto independente que organiza, em linguagem simples, dados oficiais sobre transferências da União e dos estados e programas sociais do Governo Federal. Os dados são atualizados automaticamente toda semana.</p>
+        </div>
+        <div>
+          <h3>Fontes oficiais</h3>
+          <ul>
+            <li><a href="https://www.tesourotransparente.gov.br/" target="_blank" rel="noopener">Tesouro Transparente</a></li>
+            <li><a href="https://portaldatransparencia.gov.br/" target="_blank" rel="noopener">Portal da Transparência</a></li>
+            <li><a href="https://www.gov.br/fnde/" target="_blank" rel="noopener">FNDE</a></li>
+            <li><a href="https://siconfi.tesouro.gov.br/" target="_blank" rel="noopener">Siconfi (Tesouro Nacional)</a></li>
+            <li><a href="https://cidades.ibge.gov.br/" target="_blank" rel="noopener">IBGE Cidades</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Navegação</h3>
+          <ul>
+            <li><a href="#bd-inicio">Mapa e consulta</a></li>
+            <li><a href="#bd-extrato">Extrato do município</a></li>
+            <li><a href="#bd-temas">Temas</a></li>
+            <li><a href="#bd-como">Como consultar</a></li>
+            <li><a href="/2026/11/notas-de-atualizacao.html">Notas de atualização</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="bd-rodape-base">
+        <span>© <span id="bd-ano"></span> Repasse Aberto</span>
+        <span id="bd-atualizacao">Mapa: malha dos estados baseada no IBGE</span>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ======================================================================
+     CONFIGURAÇÃO — endereço onde o robô do GitHub publica os dados.
+     ====================================================================== */
+  var URL_DADOS = "https://allukarte.github.io/brasil-em-dados-dados/dados/";
+  var DADOS_CONFIGURADOS = URL_DADOS.indexOf("SEU-USUARIO") === -1;
+
+  var REGIOES = {
+    N:  { nome: "Norte",        cor: "#1F9D6B" },
+    NE: { nome: "Nordeste",     cor: "#E8A317" },
+    CO: { nome: "Centro-Oeste", cor: "#8A5CD1" },
+    SE: { nome: "Sudeste",      cor: "#3C82F0" },
+    S:  { nome: "Sul",          cor: "#D8504D" }
+  };
+
+  var ESTADOS = [
+    ["AC","Acre","N","Rio Branco",["Cruzeiro do Sul","Sena Madureira"]],
+    ["AL","Alagoas","NE","Maceió",["Arapiraca","Palmeira dos Índios"]],
+    ["AP","Amapá","N","Macapá",["Santana","Laranjal do Jari"]],
+    ["AM","Amazonas","N","Manaus",["Parintins","Itacoatiara"]],
+    ["BA","Bahia","NE","Salvador",["Feira de Santana","Vitória da Conquista"]],
+    ["CE","Ceará","NE","Fortaleza",["Caucaia","Juazeiro do Norte"]],
+    ["DF","Distrito Federal","CO","Brasília",[]],
+    ["ES","Espírito Santo","SE","Vitória",["Vila Velha","Serra"]],
+    ["GO","Goiás","CO","Goiânia",["Aparecida de Goiânia","Anápolis"]],
+    ["MA","Maranhão","NE","São Luís",["Imperatriz","Caxias"]],
+    ["MT","Mato Grosso","CO","Cuiabá",["Várzea Grande","Rondonópolis"]],
+    ["MS","Mato Grosso do Sul","CO","Campo Grande",["Dourados","Três Lagoas"]],
+    ["MG","Minas Gerais","SE","Belo Horizonte",["Uberlândia","Contagem"]],
+    ["PA","Pará","N","Belém",["Ananindeua","Santarém"]],
+    ["PB","Paraíba","NE","João Pessoa",["Campina Grande","Santa Rita"]],
+    ["PR","Paraná","S","Curitiba",["Londrina","Maringá"]],
+    ["PE","Pernambuco","NE","Recife",["Jaboatão dos Guararapes","Caruaru"]],
+    ["PI","Piauí","NE","Teresina",["Parnaíba","Picos"]],
+    ["RJ","Rio de Janeiro","SE","Rio de Janeiro",["Niterói","Duque de Caxias"]],
+    ["RN","Rio Grande do Norte","NE","Natal",["Mossoró","Parnamirim"]],
+    ["RS","Rio Grande do Sul","S","Porto Alegre",["Caxias do Sul","Pelotas"]],
+    ["RO","Rondônia","N","Porto Velho",["Ji-Paraná","Ariquemes"]],
+    ["RR","Roraima","N","Boa Vista",["Rorainópolis","Caracaraí"]],
+    ["SC","Santa Catarina","S","Florianópolis",["Joinville","Blumenau"]],
+    ["SP","São Paulo","SE","São Paulo",["Campinas","Santos"]],
+    ["SE","Sergipe","NE","Aracaju",["Nossa Senhora do Socorro","Lagarto"]],
+    ["TO","Tocantins","N","Palmas",["Araguaína","Gurupi"]]
+  ].map(function (e) { return { uf: e[0], nome: e[1], reg: e[2], capital: e[3], extras: e[4] }; });
+
+  /* Contornos dos estados (malha baseada no IBGE, simplificada): [sigla, desenho, x do rótulo, y do rótulo] */
+  var MAPA = __MAPA__;
+
+  /* Estados pequenos: rótulo fora do mapa, ligado por uma linha */
+  var ROTULO_FORA = { RN: [618, 168], PB: [618, 190], PE: [618, 212], AL: [618, 236], SE: [618, 258], ES: [566, 396], RJ: [540, 452], DF: [432, 328] };
+
+  var PORTAL = "https://portaldatransparencia.gov.br/";
+  var TESOURO = "https://www.tesourotransparente.gov.br/";
+  var FNDE = "https://www.gov.br/fnde/";
+
+  function ico(p) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + "</svg>";
+  }
+  var I = {
+    edu: ico('<path d="m2 9 10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/>'),
+    repasse: ico('<path d="M3 7h13l-3-3M21 17H8l3 3"/>'),
+    prog: ico('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6M7 17h8"/>'),
+    social: ico('<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.2 1-4 3.5-4S22 17.8 22 20"/>'),
+    saude: ico('<path d="M12 20s-8-4.6-8-10.4A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.6C20 15.4 12 20 12 20z"/><path d="M9 12h6M12 9v6"/>'),
+    casa: ico('<path d="m3 11 9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>'),
+    trabalho: ico('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>'),
+    ajuda: ico('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/>'),
+    externo: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-left:3px"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>'
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var selUF = $("bd-uf"), selMun = $("bd-mun"), btnBuscar = $("bd-buscar"), status = $("bd-status");
+  var mapa = $("bd-mapa"), dica = $("bd-dica"), area = $("bd-mapa-area");
+  var cacheMunicipios = {}, cacheDados = {}, municipiosAtuais = [];
+
+  function porUF(uf) { for (var i = 0; i < ESTADOS.length; i++) if (ESTADOS[i].uf === uf) return ESTADOS[i]; return null; }
+  function escapar(t) { var d = document.createElement("div"); d.textContent = t; return d.innerHTML; }
+  function normalizar(t) { return String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim(); }
+
+  /* ---------- Seletor de estados ---------- */
+  ESTADOS.slice().sort(function (a, b) { return a.nome.localeCompare(b.nome, "pt-BR"); }).forEach(function (e) {
+    var o = document.createElement("option");
+    o.value = e.uf; o.textContent = e.nome;
+    selUF.appendChild(o);
+  });
+
+  /* ---------- Mapa ---------- */
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); return n; }
+  var ordemReg = { N: 0, NE: 1, CO: 2, SE: 3, S: 4 };
+  var camadaRotulos = el("g", {});
+  MAPA.forEach(function (m) {
+    var e = porUF(m[0]); if (!e) return;
+    var g = el("g", { "class": "bd-uf", tabindex: "0", role: "button", "data-uf": e.uf, "data-reg": e.reg, "aria-label": e.nome });
+    g.style.setProperty("--atraso", (ordemReg[e.reg] * 0.12 + Math.random() * 0.08).toFixed(2) + "s");
+    var p = el("path", { d: m[1], fill: REGIOES[e.reg].cor });
+    g.appendChild(p);
+    if (ROTULO_FORA[e.uf]) {
+      var r = el("g", { "class": "bd-rotulo" });
+      var pos = ROTULO_FORA[e.uf];
+      r.appendChild(el("line", { x1: m[2], y1: m[3], x2: pos[0] - 4, y2: pos[1] }));
+      var t = el("text", { x: pos[0], y: pos[1] }); t.textContent = e.uf; r.appendChild(t);
+      camadaRotulos.appendChild(r);
+      if (e.uf === "DF") g.appendChild(el("circle", { cx: m[2], cy: m[3], r: 3.5, fill: "#fff" }));
+    } else {
+      var t2 = el("text", { x: m[2], y: m[3] }); t2.textContent = e.uf; g.appendChild(t2);
+    }
+    g.addEventListener("click", function () { escolherEstado(e.uf, false); });
+    g.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); escolherEstado(e.uf, false); } });
+    g.addEventListener("mousemove", function (ev) {
+      var b = area.getBoundingClientRect();
+      dica.textContent = e.nome;
+      dica.style.left = (ev.clientX - b.left) + "px"; dica.style.top = (ev.clientY - b.top) + "px";
+      dica.classList.add("bd-vis");
+    });
+    g.addEventListener("mouseleave", function () { dica.classList.remove("bd-vis"); });
+    mapa.appendChild(g);
+  });
+  mapa.appendChild(camadaRotulos);
+  setTimeout(function () { mapa.classList.remove("bd-entrada"); }, 1600);
+
+  var legenda = $("bd-legenda");
+  Object.keys(REGIOES).forEach(function (k) {
+    var li = document.createElement("li");
+    var b = document.createElement("button");
+    b.type = "button"; b.setAttribute("aria-pressed", "false");
+    b.innerHTML = '<i style="background:' + REGIOES[k].cor + '"></i>' + REGIOES[k].nome;
+    function destacar(on) {
+      mapa.classList.toggle("bd-regiao", on);
+      Array.prototype.forEach.call(mapa.querySelectorAll(".bd-uf"), function (g) { g.classList.toggle("bd-na-regiao", on && g.getAttribute("data-reg") === k); });
+    }
+    b.addEventListener("mouseenter", function () { destacar(true); });
+    b.addEventListener("mouseleave", function () { if (b.getAttribute("aria-pressed") !== "true") destacar(false); });
+    b.addEventListener("click", function () {
+      var ativo = b.getAttribute("aria-pressed") !== "true";
+      Array.prototype.forEach.call(legenda.querySelectorAll("button"), function (x) { x.setAttribute("aria-pressed", "false"); });
+      b.setAttribute("aria-pressed", String(ativo)); destacar(ativo);
+    });
+    li.appendChild(b); legenda.appendChild(li);
+  });
+
+  function destacarEstado(uf) {
+    mapa.classList.toggle("bd-com-sel", !!uf);
+    Array.prototype.forEach.call(mapa.querySelectorAll(".bd-uf"), function (g) { g.classList.toggle("bd-sel", g.getAttribute("data-uf") === uf); });
+  }
+
+  /* ---------- Municípios (API do IBGE, com lista curta de reserva) ---------- */
+  function carregarMunicipios(uf) {
+    if (cacheMunicipios[uf]) return Promise.resolve(cacheMunicipios[uf]);
+    var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 9000);
+    return fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados/" + uf + "/municipios?orderBy=nome", ctrl ? { signal: ctrl.signal } : {})
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (l) {
+        clearTimeout(timer);
+        var res = { fonte: "ibge", itens: l.map(function (m) { return { id: String(m.id), nome: m.nome }; }) };
+        cacheMunicipios[uf] = res; return res;
+      })
+      .catch(function () {
+        clearTimeout(timer);
+        return carregarDadosUF(uf).then(function (d) {
+          if (d && d.municipios) {
+            var itens = Object.keys(d.municipios).map(function (id) { return { id: id, nome: d.municipios[id].nome }; })
+              .sort(function (a, b) { return a.nome.localeCompare(b.nome, "pt-BR"); });
+            var res = { fonte: "dados", itens: itens }; cacheMunicipios[uf] = res; return res;
+          }
+          var e = porUF(uf);
+          return { fonte: "reserva", itens: [e.capital].concat(e.extras).sort().map(function (n) { return { id: "", nome: n }; }) };
+        });
+      });
+  }
+
+  function escolherEstado(uf, rolar) {
+    selUF.value = uf; destacarEstado(uf);
+    selMun.disabled = true; btnBuscar.disabled = true;
+    selMun.innerHTML = '<option value="">Carregando municípios…</option>';
+    status.className = "bd-status"; status.textContent = "";
+    if (!uf) { selMun.innerHTML = '<option value="">Escolha o estado primeiro</option>'; return Promise.resolve(); }
+    if (rolar) $("bd-inicio").scrollIntoView({ behavior: "smooth", block: "start" });
+    carregarDadosUF(uf);
+    return carregarMunicipios(uf).then(function (res) {
+      if (selUF.value !== uf) return;
+      municipiosAtuais = res.itens;
+      selMun.innerHTML = '<option value="">Selecione o município</option>';
+      res.itens.forEach(function (m, i) { var o = document.createElement("option"); o.value = String(i); o.textContent = m.nome; selMun.appendChild(o); });
+      selMun.disabled = false;
+      var e = porUF(uf);
+      if (res.fonte === "reserva") { status.className = "bd-status bd-erro"; status.textContent = "Não foi possível carregar a lista completa de municípios de " + e.nome + ". Tente novamente em instantes."; }
+      else status.textContent = res.itens.length + " municípios em " + e.nome + ". Escolha um para ver o extrato.";
+      if (res.itens.length === 1) { selMun.value = "0"; btnBuscar.disabled = false; }
+    });
+  }
+
+  selUF.addEventListener("change", function () { escolherEstado(selUF.value, false); });
+  selMun.addEventListener("change", function () { btnBuscar.disabled = selMun.value === ""; });
+  $("bd-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!selUF.value || selMun.value === "") return;
+    mostrarExtrato(porUF(selUF.value), municipiosAtuais[+selMun.value]);
+    $("bd-extrato").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  /* ---------- Dados oficiais publicados pelo robô ---------- */
+  function carregarDadosUF(uf) {
+    if (!DADOS_CONFIGURADOS) return Promise.resolve(null);
+    if (cacheDados[uf]) return cacheDados[uf];
+    cacheDados[uf] = fetch(URL_DADOS + uf + ".json", { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .catch(function () { delete cacheDados[uf]; return null; });
+    return cacheDados[uf];
+  }
+  var cacheExtra = {};
+  function carregarExtra(pasta, uf) {
+    if (!DADOS_CONFIGURADOS) return Promise.resolve(null);
+    var k = pasta + uf;
+    if (cacheExtra[k]) return cacheExtra[k];
+    cacheExtra[k] = fetch(URL_DADOS + pasta + "/" + uf + ".json", { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .catch(function () { delete cacheExtra[k]; return null; });
+    return cacheExtra[k];
+  }
+
+  var MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  var MES3 = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  var fmtMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+  var fmtNum = new Intl.NumberFormat("pt-BR");
+  function moeda(v) { return fmtMoeda.format(v || 0); }
+  function curto(v) {
+    v = v || 0;
+    if (v >= 1e9) return "R$ " + (v / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + (v < 2e9 ? " bilhão" : " bilhões");
+    if (v >= 1e6) return "R$ " + (v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + (v < 2e6 ? " milhão" : " milhões");
+    return moeda(v);
+  }
+  function periodo(t) {
+    if (!t || !t.mes_inicial) return String(t && t.ano || "");
+    return (t.mes_inicial === t.mes_final ? MES3[t.mes_final - 1] : MES3[t.mes_inicial - 1] + " a " + MES3[t.mes_final - 1]) + "/" + t.ano;
+  }
+  function pct(v, tot) { var n = tot ? Math.round(v / tot * 100) : 0; return (n === 0 && v > 0 ? "menos de 1" : n) + "%"; }
+  function mesRef(txt) { if (!txt) return ""; var p = txt.split("-"); return MESES[+p[1] - 1] + " de " + p[0]; }
+  function dataBR(iso) { var d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("pt-BR"); }
+  function linkFonte(url, txt) { return '<a href="' + url + '" target="_blank" rel="noopener">' + txt + I.externo + "</a>"; }
+
+  function linha(rotulo, valor, sub, total) {
+    var dd = valor === null ? '<dd class="bd-sem">Dado não disponível</dd>' : "<dd>" + valor + (sub ? "<small>" + sub + "</small>" : "") + "</dd>";
+    return '<div class="bd-linha' + (total ? " bd-total" : "") + '"><dt>' + rotulo + "</dt>" + dd + "</div>";
+  }
+  function linhaRepasse(rotulo, v, sub) {
+    if (!v) return '<div class="bd-linha"><dt>' + rotulo + '</dt><dd class="bd-sem">Nenhum repasse no período</dd></div>';
+    return linha(rotulo, moeda(v), sub);
+  }
+  function grupo(cor, titulo, aux, linhasHtml) {
+    return '<div class="bd-grupo"><div class="bd-grupo-cab" style="--c:' + cor + '"><i></i><h3>' + titulo + "</h3>" + (aux ? "<span>" + aux + "</span>" : "") +
+      '</div><dl class="bd-linhas">' + linhasHtml + "</dl></div>";
+  }
+
+  function extratoVazio() {
+    $("bd-extrato-conteudo").innerHTML =
+      '<div class="bd-extrato bd-vazio"><p class="bd-ext-tipo">Nenhum município escolhido</p><h3 class="bd-ext-nome">Escolha uma cidade</h3>' +
+      "<p>Clique em um estado no mapa ou use os campos de consulta. O extrato aparece aqui, com os valores e as fontes oficiais.</p>" +
+      '<p style="margin-top:20px"><a href="#bd-inicio" class="bd-btn" style="text-decoration:none">Ir para o mapa</a></p></div>';
+  }
+
+  var consulta = 0, tipo = /tipo=estadual/.test(location.hash) ? "estadual" : "federal", atual = null;
+  var INTRO_FED = "Tudo o que a União repassou à cidade no ano e o que foi pago em programas sociais no mês mais recente.";
+  var INTRO_EST = "O que o governo do estado repassou à cidade no ano: ICMS, IPVA, saúde, educação e outros repasses, com os valores que a prefeitura informou ao Tesouro Nacional.";
+  function marcarTipo() {
+    [].forEach.call(document.querySelectorAll("#bd .bd-tipo-btns button"), function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-tipo") === tipo ? "true" : "false");
+    });
+    $("bd-secao-intro").textContent = tipo === "estadual" ? INTRO_EST : INTRO_FED;
+  }
+  [].forEach.call(document.querySelectorAll("#bd .bd-tipo-btns button"), function (b) {
+    b.addEventListener("click", function () {
+      var novo = b.getAttribute("data-tipo");
+      if (novo === tipo) return;
+      tipo = novo;
+      marcarTipo();
+      if (atual) mostrarExtrato(atual[0], atual[1]);
+    });
+  });
+  function linkCidade(id) { return location.href.split("#")[0] + "#cidade=" + id + (tipo === "estadual" ? "&tipo=estadual" : ""); }
+  function ligarAcoes() {
+    var bc = $("bd-copiar");
+    if (bc) bc.addEventListener("click", function () {
+      var l = bc.getAttribute("data-link");
+      function ok() { bc.textContent = "Link copiado!"; setTimeout(function () { bc.textContent = "Copiar link desta cidade"; }, 2500); }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(l).then(ok, function () { prompt("Copie o link:", l); });
+      else prompt("Copie o link:", l);
+    });
+    var bi = $("bd-imprimir");
+    if (bi) bi.addEventListener("click", function () {
+      [].forEach.call(document.querySelectorAll("#bd details"), function (d) { d.setAttribute("open", ""); });
+      window.print();
+    });
+  }
+  function botoesAcoes(m, e, quando, assunto) {
+    var link = linkCidade(m.id);
+    var texto = "Veja " + assunto + " " + m.nome + " (" + e.uf + ") em " + quando + ": " + link;
+    return '<div class="bd-acoes"><a class="bd-zap" href="https://wa.me/?text=' + encodeURIComponent(texto) + '" target="_blank" rel="noopener">Compartilhar no WhatsApp</a>' +
+      '<button type="button" id="bd-copiar" data-link="' + escapar(link) + '">Copiar link desta cidade</button>' +
+      '<button type="button" id="bd-imprimir">Imprimir ou salvar PDF</button></div>';
+  }
+
+  function mostrarExtrato(e, m) {
+    atual = [e, m];
+    if (tipo === "estadual") { mostrarEstadual(e, m); return; }
+    $("bd-extrato-conteudo").innerHTML = '<p class="bd-carregando">Carregando o extrato de ' + escapar(m.nome) + "…</p>";
+    destacarEstado(e.uf);
+    var minha = ++consulta;
+    Promise.all([carregarDadosUF(e.uf), carregarExtra("pdde", e.uf), carregarExtra("fundeb", e.uf), carregarExtra("convenios", e.uf)]).then(function (res) {
+      if (minha !== consulta) return;
+      var dUF = res[0], pUF = res[1], fUF = res[2], cUF = res[3];
+      function doMun(x) { return (x && m.id && x.municipios && x.municipios[m.id]) || null; }
+      desenharExtrato(e, m, doMun(dUF), dUF, doMun(pUF), pUF, doMun(fUF), fUF, doMun(cUF), cUF);
+    });
+  }
+
+  var cacheMedia = {};
+  function mediaFundebUF(uf, dUF, fUF) {
+    if (cacheMedia[uf] !== undefined) return cacheMedia[uf];
+    var soma = 0, alunos = 0;
+    if (dUF && fUF && dUF.municipios && fUF.municipios) {
+      Object.keys(fUF.municipios).forEach(function (id) {
+        var t = dUF.municipios[id] && dUF.municipios[id].transferencias, a = fUF.municipios[id].matriculas;
+        if (t && t.fundeb && a) { soma += t.fundeb; alunos += a; }
+      });
+    }
+    cacheMedia[uf] = alunos ? soma / alunos : null;
+    return cacheMedia[uf];
+  }
+
+  var cacheRank = {};
+  function rankUF(chave, uf, valores, id) {
+    // valores: {id: número}; devolve [posição, total] (1 = maior valor)
+    var k = chave + uf;
+    if (!cacheRank[k]) {
+      var lista = Object.keys(valores).filter(function (i) { return valores[i] > 0; })
+        .sort(function (a, b) { return valores[b] - valores[a]; });
+      var pos = {};
+      lista.forEach(function (i, n) { pos[i] = n + 1; });
+      cacheRank[k] = { pos: pos, total: lista.length };
+    }
+    var r = cacheRank[k];
+    return r.pos[id] ? [r.pos[id], r.total] : null;
+  }
+  function porAlunoUF(campo, uf, origem, fUF) {
+    // {id: valor por aluno} para o estado
+    var v = {};
+    if (!origem || !origem.municipios || !fUF || !fUF.municipios) return v;
+    Object.keys(fUF.municipios).forEach(function (id) {
+      var a = fUF.municipios[id].matriculas, o = origem.municipios[id];
+      var x = o ? campo(o) : 0;
+      if (a && x) v[id] = x / a;
+    });
+    return v;
+  }
+  function media(v) {
+    var ks = Object.keys(v); if (!ks.length) return null;
+    return ks.reduce(function (s, k) { return s + v[k]; }, 0) / ks.length;
+  }
+  function variacao(atual, antes, ano) {
+    if (!antes || !atual) return "";
+    var pct = (atual / antes - 1) * 100;
+    var txt = (pct >= 0 ? "+" : "\u2212") + Math.abs(pct).toFixed(Math.abs(pct) < 10 ? 1 : 0).replace(".", ",") + "%";
+    return '<span class="bd-var ' + (pct >= 0 ? "bd-var-mais" : "bd-var-menos") + '">' + txt + "</span> sobre o mesmo período de " + ano;
+  }
+
+  function listaEscolas(p) {
+    var esc = p.pdde_escolas || [];
+    if (!esc.length) return "";
+    var itens = esc.map(function (x) {
+      return '<li data-n="' + escapar(normalizar(x[0])) + '"><span>' + escapar(x[0]) + "</span><b>" + moeda(x[1]) + "</b></li>";
+    }).join("");
+    return '<details class="bd-escolas"><summary>Ver ' + (esc.length === 1 ? "a escola" : "as " + fmtNum.format(esc.length) + " escolas") + "</summary>" +
+      (esc.length > 12 ? '<input type="search" placeholder="Procurar escola pelo nome" aria-label="Procurar escola pelo nome">' : "") +
+      "<ol>" + itens + "</ol>" +
+      '<p class="bd-nota-esc">Valores pagos às unidades executoras (conselhos e caixas escolares), do maior para o menor.</p></details>';
+  }
+
+  function mostrarEstadual(e, m) {
+    $("bd-extrato-conteudo").innerHTML = '<p class="bd-carregando">Carregando os repasses estaduais de ' + escapar(m.nome) + "…</p>";
+    destacarEstado(e.uf);
+    var minha = ++consulta;
+    carregarExtra("estaduais", e.uf).then(function (sUF) {
+      if (minha !== consulta) return;
+      desenharEstadual(e, m, (sUF && m.id && sUF.municipios && sUF.municipios[m.id]) || null, sUF);
+    });
+  }
+
+  var SICONFI = "https://siconfi.tesouro.gov.br/";
+  var DET_EST = {
+    saude: ["Saúde", {
+      sus: ["Repasse do SUS estadual", "dinheiro que o fundo estadual de saúde manda direto ao fundo da cidade para manter postos, hospitais, ambulâncias e programas de saúde"],
+      convenios: ["Convênios de saúde", "acordos com o governo do estado para um projeto ou compra específica na saúde"],
+      obras: ["Obras e equipamentos de saúde", "dinheiro para construir, reformar ou equipar unidades de saúde"],
+      especial: ["Transferência especial", "dinheiro mandado direto à prefeitura, sem convênio"],
+      outros: ["Outros repasses para a saúde", "demais valores do estado que a prefeitura marcou como saúde"]
+    }],
+    educacao: ["Educação", {
+      programas: ["Programas estaduais de educação", "como transporte escolar e apoio à rede municipal; cada estado tem seus programas"],
+      convenios: ["Convênios de educação", "acordos com o governo do estado para um projeto ou compra específica na educação"],
+      obras: ["Obras e equipamentos de educação", "dinheiro para construir, reformar ou equipar escolas e creches"],
+      especial: ["Transferência especial", "dinheiro mandado direto à prefeitura, sem convênio"],
+      outros: ["Outros repasses para a educação", "demais valores do estado que a prefeitura marcou como educação"]
+    }],
+    assistencia: ["Assistência social", {
+      feas: ["Fundo estadual de assistência social", "ajuda a manter CRAS, CREAS, abrigos e benefícios como auxílio funeral e cesta básica"],
+      convenios: ["Convênios de assistência social", "acordos com o governo do estado para um projeto específico"],
+      obras: ["Obras e equipamentos", "dinheiro para construir, reformar ou equipar unidades de assistência"],
+      especial: ["Transferência especial", "dinheiro mandado direto à prefeitura, sem convênio"],
+      outros: ["Outros repasses para assistência social", "demais valores do estado que a prefeitura marcou como assistência"]
+    }],
+    outros: ["Convênios e outros", {
+      convenios: ["Convênios", "acordos com o governo do estado para uma obra, compra ou projeto, em áreas como estradas, saneamento, esporte e segurança"],
+      especial: ["Transferência especial", "dinheiro mandado direto à prefeitura, sem convênio; a prefeitura decide em que usar, dentro das regras"],
+      obras: ["Obras e equipamentos", "dinheiro para construir, reformar ou comprar equipamentos, como pavimentação, máquinas e veículos"],
+      outros: ["Demais repasses", "valores que a prefeitura não classificou em um programa específico"]
+    }]
+  };
+  var ORDEM_DET = ["sus", "feas", "programas", "convenios", "especial", "obras", "outros"];
+  function detalheEstado(d, cats) {
+    if (!d) return "";
+    var blocos = cats.map(function (c) {
+      var partes = d[c], info = DET_EST[c];
+      if (!partes || !info) return "";
+      var itens = ORDEM_DET.filter(function (k) { return partes[k] > 0 && info[1][k]; });
+      if (!itens.length) return "";
+      return (cats.length > 1 ? '<p class="bd-det-tit"><b>' + info[0] + "</b></p>" : "") + itens.map(function (k) {
+        return "<p><b>" + info[1][k][0] + ": " + moeda(partes[k]) + ".</b> " + info[1][k][1].charAt(0).toUpperCase() + info[1][k][1].slice(1) + ".</p>";
+      }).join("");
+    }).join("");
+    if (!blocos) return "";
+    return '<details class="bd-escolas bd-mais"><summary>Ver detalhes</summary>' + blocos + "</details>";
+  }
+
+  function desenharEstadual(e, m, s, sUF) {
+    var reg = REGIOES[e.reg], v = (s && s.v) || {};
+    var capital = normalizar(m.nome) === normalizar(e.capital);
+    var per = s ? periodo({ ano: s.ano, mes_inicial: 1, mes_final: s.mes }) : "";
+    var selo = s ? '<span class="bd-selo bd-selo-ok">Dados oficiais</span>' : '<span class="bd-selo bd-selo-neutro">' + (e.uf === "DF" ? "Não se aplica" : "Ainda sem dados publicados") + '</span>';
+    var h = '<article class="bd-extrato">';
+    h += '<div class="bd-ext-topo"><div><p class="bd-ext-tipo">Repasses do estado</p>' +
+      '<h3 class="bd-ext-nome">' + escapar(m.nome) + " (" + e.uf + ")</h3>" +
+      '<p class="bd-ext-meta"><span>' + escapar(e.nome) + ", Região " + reg.nome + "</span>" +
+      (m.id ? "<span>Código IBGE <b>" + m.id + "</b></span>" : "") +
+      (capital ? "<span><b>Capital do estado</b></span>" : "") + "</p></div>" + selo + "</div>";
+    if (s) {
+      h += '<p class="bd-aviso">Aqui aparece o <b>dinheiro que o governo de ' + escapar(e.nome) + ' repassou à cidade</b> de janeiro a ' + MESES[s.mes - 1] + " de " + s.ano +
+        '. Os valores são os que a <b>própria prefeitura informou ao Tesouro Nacional</b>. O dinheiro da União fica no extrato <b>Federais</b>, no topo da página.</p>';
+      var li = linhaRepasse("ICMS (cota-parte)", v.icms, "25% do ICMS arrecadado no estado é dividido entre as cidades") +
+        linhaRepasse("IPVA (cota-parte)", v.ipva, "metade do IPVA dos veículos registrados na cidade") +
+        linhaRepasse("IPI-Exportação", v.ipi, "parte do IPI-Exportação que o estado recebe da União e repassa") +
+        linhaRepasse("CIDE-Combustíveis", v.cide, "parte da CIDE-Combustíveis que o estado repassa às cidades") +
+        (v.royalties ? linhaRepasse("Royalties e compensações", v.royalties, "parte das compensações por petróleo, minérios e energia") : "") +
+        '<details class="bd-escolas bd-mais"><summary>Entenda cada imposto</summary>' +
+        "<p><b>ICMS:</b> imposto estadual sobre a venda de mercadorias e serviços como energia, combustível e telefone. A Constituição manda o estado entregar 25% às cidades. A maior parte é dividida pelo movimento econômico de cada cidade; o resto segue critérios da lei estadual, que incluem resultados na educação.</p>" +
+        "<p><b>IPVA:</b> metade do imposto pago pelos veículos registrados na cidade fica com a prefeitura.</p>" +
+        "<p><b>IPI-Exportação:</b> a União entrega aos estados exportadores 10% do IPI, e o estado repassa 25% disso às cidades, pelos mesmos critérios do ICMS.</p>" +
+        "<p><b>CIDE-Combustíveis:</b> a União entrega aos estados 29% da contribuição sobre combustíveis, e o estado repassa 25% disso às cidades, para obras de transporte.</p>" +
+        (v.royalties ? "<p><b>Royalties e compensações:</b> o estado repassa às cidades 25% do que recebe pela exploração de petróleo, minérios e rios usados para gerar energia.</p>" : "") +
+        "<p>Esse dinheiro é da cidade por direito: o estado só arrecada e entrega. Não depende de convênio nem de pedido da prefeitura.</p></details>";
+      h += grupo("#7C4DCC", "Impostos e royalties repartidos com a cidade", per, li);
+      var lp = linhaRepasse("Saúde", v.saude, "repasses do estado para o SUS do município") +
+        linhaRepasse("Educação", v.educacao, "programas estaduais, como transporte escolar") +
+        linhaRepasse("Assistência social", v.assistencia, "repasses do fundo estadual de assistência social") +
+        detalheEstado(s.d, ["saude", "educacao", "assistencia"]);
+      h += grupo("#D8504D", "Saúde, educação e assistência social", per, lp);
+      var lo = linhaRepasse("Convênios e outros repasses", v.outros, "convênios, obras e demais transferências do estado") +
+        detalheEstado(s.d, ["outros"]) +
+        linha("Total recebido do estado", moeda(s.total), "", true) +
+        '<details class="bd-escolas bd-mais"><summary>Como o total é calculado</summary>' +
+        "<p><b>Entra no total:</b> tudo o que aparece neste extrato, ou seja, impostos e royalties repartidos, saúde, educação, assistência social, convênios, obras e demais repasses do governo do estado.</p>" +
+        "<p><b>Não entra:</b> o dinheiro da União (está no extrato Federais) e o que o estado gasta direto na cidade sem passar pela prefeitura, como escolas e hospitais estaduais.</p>" +
+        "<p>Os valores são os que a prefeitura registrou na contabilidade enviada ao Tesouro Nacional, de janeiro até o último mês enviado.</p></details>";
+      h += grupo("#3C82F0", "Convênios e outros", per, lo);
+      h += '<p class="bd-fontes">Fonte: ' + linkFonte(SICONFI, "Tesouro Nacional — Siconfi") +
+        " (Matriz de Saldos Contábeis que cada prefeitura envia todo mês). Algumas prefeituras atrasam o envio; quando isso acontece, os valores novos aparecem na atualização seguinte. " +
+        linkFonte("https://cidades.ibge.gov.br/", "Ver a cidade no IBGE") + "</p>";
+    } else {
+      h += '<p class="bd-aviso">' + (e.uf === "DF"
+        ? "Brasília não recebe repasses de um governo estadual: o Distrito Federal faz ao mesmo tempo o papel de estado e de município. O dinheiro que vem da União está no extrato <b>Federais</b>, no topo da página."
+        : sUF
+        ? "A prefeitura de " + escapar(m.nome) + " ainda não enviou ao Tesouro Nacional os dados dos últimos meses. Quando ela enviar, os repasses do estado aparecem aqui na atualização seguinte."
+        : "Os repasses estaduais ainda estão sendo carregados. Volte depois da próxima atualização semanal.") + "</p>";
+    }
+    h += "</article>";
+
+    var r = '<aside class="bd-resumo" aria-label="Resumo dos repasses do estado">';
+    if (s) {
+      var imp = (v.icms || 0) + (v.ipva || 0) + (v.ipi || 0) + (v.cide || 0) + (v.royalties || 0), tot = s.total || 0;
+      var partes = [["Impostos (ICMS, IPVA…)", imp, "#9B7BEA"], ["Saúde", v.saude || 0, "#D8504D"], ["Educação", v.educacao || 0, "#1F9D6B"],
+        ["Assistência social", v.assistencia || 0, "#E59A1C"], ["Convênios e outros", v.outros || 0, "#3C82F0"]]
+        .filter(function (x) { return x[1] > 0; });
+      r += "<h3>Recebido do estado em " + per + '</h3><p class="bd-resumo-valor">' + curto(tot) + "</p>";
+      r += '<p class="bd-resumo-sub">' + moeda(tot) + "</p>";
+      r += '<div class="bd-barra" role="img" aria-label="Divisão dos repasses do estado">' + partes.map(function (x) {
+        return '<span style="width:' + (tot ? x[1] / tot * 100 : 0).toFixed(2) + "%;background:" + x[2] + '"></span>';
+      }).join("") + "</div>";
+      r += '<ul class="bd-barra-leg">' + partes.map(function (x) {
+        return '<li><i style="background:' + x[2] + '"></i>' + x[0] + "<b>" + pct(x[1], tot) + "</b></li>";
+      }).join("") + "</ul>";
+      r += '<p class="bd-resumo-nota">Este total é só do governo do estado. Os repasses da União ficam no extrato Federais e não estão somados aqui.</p>';
+      if (m.id) r += botoesAcoes(m, e, per, "quanto o estado repassou a");
+    } else {
+      r += "<h3>Resumo</h3>" + '<p class="bd-resumo-valor" style="font-size:28px">Sem valores para mostrar</p>' +
+        '<p class="bd-resumo-nota">' + (e.uf === "DF" ? "O Distrito Federal não tem repasses estaduais." : "Os repasses do estado aparecem quando a prefeitura envia sua contabilidade ao Tesouro Nacional.") + '</p>';
+    }
+    r += "</aside>";
+    $("bd-extrato-conteudo").innerHTML = h + r;
+    if (m.id) { try { history.replaceState(null, "", "#cidade=" + m.id + "&tipo=estadual"); } catch (er) {} }
+    ligarAcoes();
+  }
+
+  function desenharExtrato(e, m, d, dUF, p, pUF, f, fUF, cv, cUF) {
+    var reg = REGIOES[e.reg], oficial = !!d;
+    d = d || {};
+    var t = d.transferencias, bf = d.bolsa_familia, bpc = d.bpc;
+    var capital = normalizar(m.nome) === normalizar(e.capital);
+
+    var selo = oficial
+      ? '<span class="bd-selo bd-selo-ok">Dados oficiais</span>'
+      : (DADOS_CONFIGURADOS ? '<span class="bd-selo bd-selo-neutro">Ainda sem dados publicados</span>' : '<span class="bd-selo bd-selo-demo">Dados demonstrativos, não oficiais</span>');
+
+    var h = '<article class="bd-extrato">';
+    h += '<div class="bd-ext-topo"><div><p class="bd-ext-tipo">Extrato do município</p>' +
+      '<h3 class="bd-ext-nome">' + escapar(m.nome) + " (" + e.uf + ")</h3>" +
+      '<p class="bd-ext-meta"><span>' + escapar(e.nome) + ", Região " + reg.nome + "</span>" +
+      (m.id ? "<span>Código IBGE <b>" + m.id + "</b></span>" : "") +
+      (capital ? "<span><b>Capital do estado</b></span>" : "") + "</p></div>" + selo + "</div>";
+    if (oficial) h += '<p class="bd-aviso">Aqui aparece o <b>dinheiro que chegou à cidade por repasses</b> (Fundeb, governo federal e programas sociais). Não são os gastos da prefeitura: ela também tem receitas próprias e suas despesas com salários, manutenção e serviços, que não entram neste extrato.</p>';
+
+    // Educação
+    var subF = "";
+    var ant = t && t.ano_anterior;
+    if (t && t.fundeb && f && f.matriculas) {
+      subF = moeda(t.fundeb / f.matriculas) + " por aluno at\u00e9 agora";
+      var med = mediaFundebUF(e.uf, dUF, fUF);
+      if (med) subF += " \u00b7 m\u00e9dia de " + e.uf + ": " + moeda(med);
+      var rk = rankUF("fundeb", e.uf, porAlunoUF(function (o) { return o.transferencias && o.transferencias.fundeb; }, e.uf, dUF, fUF), m.id);
+      if (rk) subF += "<br>" + rk[0] + "\u00aa de " + rk[1] + " cidades de " + e.uf + " em Fundeb por aluno";
+    } else if (t && t.total && t.fundeb) {
+      subF = Math.round(t.fundeb / t.total * 100) + "% das transferências do período";
+    }
+    if (ant && ant.fundeb && t && t.fundeb) subF += (subF ? "<br>" : "") + variacao(t.fundeb, ant.fundeb, ant.ano);
+    var le = linha("Fundeb recebido", t && t.fundeb ? moeda(t.fundeb) : null, subF);
+    if (t && t.fundeb) {
+      var mais = "";
+      if (f && f.matriculas && f.receita_prevista) {
+        mais += "<p>Previsto para " + ((fUF && fUF.ano) || "o ano") + " inteiro: <b>" + moeda(f.receita_prevista) + "</b>, ou <b>" +
+          moeda(f.receita_prevista / f.matriculas) + " por aluno</b> (cerca de " + moeda(f.receita_prevista / f.matriculas / 12) + " por m\u00eas).</p>";
+      }
+      if (f && ("vaaf" in f || "vaat" in f || "vaar" in f)) {
+        var comp = [["VAAF", f.vaaf], ["VAAT", f.vaat], ["VAAR", f.vaar]];
+        var recebe = comp.filter(function (c) { return c[1] > 0; });
+        var nao = comp.filter(function (c) { return !(c[1] > 0); }).map(function (c) { return c[0]; });
+        mais += "<p><b>Complementação da União</b> (dinheiro extra do governo federal, previsto para " + ((fUF && fUF.ano) || "o ano") + "): " +
+          (recebe.length ? recebe.map(function (c) { return c[0] + " <b>" + moeda(c[1]) + "</b>"; }).join(" · ") +
+            (nao.length ? " · não recebe " + nao.join(" nem ") : "") + ". Já está incluída no Fundeb recebido." :
+            "a cidade <b>não recebe</b> VAAF, VAAT nem VAAR.") + "</p>" +
+          "<p style=\"font-size:13.5px\">VAAF: para estados com pouco dinheiro por aluno. VAAT: para redes com pouco dinheiro por aluno. VAAR: prêmio por gestão e aprendizagem.</p>";
+      }
+      mais += "<p>O Fundeb paga o funcionamento da rede municipal. Pelo menos <b>70% vai para sal\u00e1rios</b> de professores e outros profissionais da educa\u00e7\u00e3o; o resto cobre manuten\u00e7\u00e3o, material e transporte.</p>";
+      mais += "<p>Este \u00e9 o total que a prefeitura recebeu. O Portal da Transpar\u00eancia mostra s\u00f3 a parte que vem de impostos federais, por isso l\u00e1 o valor \u00e9 menor.</p>";
+      le += '<details class="bd-escolas bd-mais"><summary>Entenda o Fundeb</summary>' + mais + "</details>";
+    }
+    if (f && f.matriculas) {
+      var NOMES_ETAPA = [["creche", "creche"], ["pre_escola", "pr\u00e9-escola"], ["fundamental", "fundamental"], ["medio", "ensino m\u00e9dio"], ["eja", "EJA"], ["especial", "educa\u00e7\u00e3o especial"]];
+      var et = f.etapas || {};
+      var subE = NOMES_ETAPA.filter(function (x) { return et[x[0]]; }).map(function (x) { return x[1] + " " + fmtNum.format(et[x[0]]); })
+        .reduce(function (acc, x, i) { return acc + (i ? (i % 3 ? " \u00b7 " : "<br>") : "") + x; }, "");
+      le += linha("Alunos na rede municipal", fmtNum.format(f.matriculas), subE);
+    }
+    if (p) {
+      var nEsc = (p.pdde_escolas || []).length;
+      var subP = nEsc ? fmtNum.format(nEsc) + (nEsc === 1 ? " escola" : " escolas") : "";
+      if (p.pdde_prefeitura) subP += (subP ? " + " : "") + moeda(p.pdde_prefeitura) + " via prefeitura";
+      if (pUF && t && periodo(pUF) !== periodo(t)) subP += (subP ? " · " : "") + periodo(pUF);
+      le += linha("Dinheiro Direto na Escola (PDDE)", p.pdde_total ? moeda(p.pdde_total) : moeda(0), subP);
+      le += listaEscolas(p);
+      var subM = "repassado \u00e0 prefeitura";
+      if (p.pnae && f && f.matriculas) {
+        var vm = porAlunoUF(function (o) { return o.pnae; }, e.uf, pUF, fUF);
+        var mm = media(vm);
+        subM = moeda(p.pnae / f.matriculas) + " por aluno" + (mm ? " \u00b7 m\u00e9dia de " + e.uf + ": " + moeda(mm) : "");
+        var rm = rankUF("pnae", e.uf, vm, m.id);
+        if (rm) subM += "<br>" + rm[0] + "\u00aa de " + rm[1] + " cidades de " + e.uf + " em merenda por aluno";
+      }
+      le += linha("Merenda escolar (PNAE)", p.pnae ? moeda(p.pnae) : moeda(0), subM);
+      if ("salario_educacao" in p) le += linhaRepasse("Salário-Educação", p.salario_educacao, "cota do município, para a educação básica");
+      if ("transporte_escolar" in p) le += linhaRepasse("Transporte escolar (PNATE)", p.transporte_escolar, "para levar alunos da zona rural");
+    } else {
+      le += linha("Dinheiro Direto na Escola (PDDE)", null) + linha("Merenda escolar (PNAE)", null) + linha("Salário-Educação", null);
+    }
+    h += grupo(REGIOES.N.cor, "Educação", t ? periodo(t) : (pUF ? periodo(pUF) : ""), le);
+
+    // Saúde
+    if (p && p.saude) {
+      var sa = p.saude, ls = "";
+      ls += linhaRepasse("Atenção Primária", sa.primaria, "postos de saúde e equipes de Saúde da Família");
+      ls += linhaRepasse("Média e Alta Complexidade", sa.mac, "especialistas, exames, cirurgias e internações");
+      ls += linhaRepasse("Agentes comunitários de saúde", sa.acs, "salários dos agentes");
+      if (sa.enfermagem) ls += linha("Piso da enfermagem", moeda(sa.enfermagem), "ajuda da União para pagar o salário mínimo da enfermagem");
+      if (sa.outros) ls += linha("Outros repasses do SUS", moeda(sa.outros), "vigilância, remédios, programas e reforços");
+      ls += '<details class="bd-escolas bd-mais"><summary>Entenda a saúde</summary>' +
+        "<p>Dinheiro do SUS que o Ministério da Saúde enviou ao <b>Fundo Municipal de Saúde</b>. A prefeitura usa para manter postos, pagar equipes e contratar atendimentos.</p>" +
+        (sa.enfermagem ? "<p><b>Piso da enfermagem:</b> desde 2022 a lei garante um salário mínimo nacional para enfermeiros, técnicos, auxiliares de enfermagem e parteiras. Como muitas prefeituras e hospitais filantrópicos não conseguiam pagar, a União manda todo mês um complemento. A prefeitura usa para pagar a própria equipe e repassa a parte dos hospitais filantrópicos da cidade.</p>" : "") +
+        "<p>Não entra aqui o que o governo do estado gasta na cidade, nem hospitais e serviços pagos direto pelo governo federal.</p></details>";
+      ls += linha("Total da saúde", moeda(sa.total), "", true);
+      h += grupo(REGIOES.S.cor, "Saúde", pUF ? periodo(pUF) : "", ls);
+    }
+
+    // Assistência social
+    if (p && p.assistencia) {
+      var asx = p.assistencia, la = "";
+      la += linhaRepasse("Proteção Social Básica", asx.basica, "CRAS, serviços de convivência e atendimento às famílias");
+      la += linhaRepasse("Proteção Social Especial", asx.especial, "CREAS, abordagem social e acolhimento");
+      la += linhaRepasse("Gestão do Cadastro Único e do Bolsa Família", asx.gestao, "para a prefeitura manter o cadastro e acompanhar as famílias");
+      if (asx.outros) la += linha("Outros repasses da assistência", moeda(asx.outros), "estruturação da rede, Criança Feliz e outros programas");
+      la += '<details class="bd-escolas bd-mais"><summary>Entenda a assistência social</summary>' +
+        "<p>Dinheiro que o Fundo Nacional de Assistência Social enviou ao <b>Fundo Municipal de Assistência Social</b>. A prefeitura usa para manter o CRAS e o CREAS, pagar as equipes e atender famílias em situação de vulnerabilidade.</p>" +
+        "<p><b>Proteção Social Básica:</b> prevenção, no CRAS e nos serviços de convivência para crianças, jovens e idosos. <b>Proteção Social Especial:</b> casos de direitos violados, no CREAS, na abordagem de pessoas em situação de rua e no acolhimento. <b>Gestão:</b> o IGD, que paga o trabalho de manter o Cadastro Único e acompanhar as famílias do Bolsa Família.</p>" +
+        "<p>Não entram aqui os benefícios pagos direto às famílias, como o Bolsa Família e o BPC. Eles aparecem em Programas sociais.</p></details>";
+      la += linha("Total da assistência social", moeda(asx.total), "", true);
+      h += grupo("#0E8FA3", "Assistência social", pUF ? periodo(pUF) : "", la);
+    }
+
+    // Transferências
+    var lt = "";
+    if (t) {
+      var EXPL = {
+        "FPM": ["FPM (Fundo de Participação dos Municípios)", "Parte do Imposto de Renda e do IPI que a União arrecada e divide entre as cidades, conforme o número de habitantes. Inclui as parcelas extras de julho, setembro e dezembro."],
+        "Royalties": ["Royalties (petróleo, minérios e energia)", "Compensação paga por empresas que exploram recursos naturais: petróleo e gás, minérios e rios usados para gerar energia. Mesmo cidades que não produzem recebem uma parte, pelo Fundo Especial do Petróleo."],
+        "ITR": ["ITR (Imposto Territorial Rural)", "Imposto pago por donos de terras rurais. Metade fica com a cidade onde está o imóvel, ou tudo, se a prefeitura assumiu a cobrança."],
+        "CIDE-Combustíveis": ["CIDE-Combustíveis", "Contribuição cobrada sobre gasolina e diesel. Uma parte vai para estados e cidades, para obras de transporte, como ruas, estradas e transporte público."],
+        "LC 176/2020 (ADO25)": ["Compensação da Lei Kandir (LC 176/2020)", "A União paga aos estados e cidades pelo ICMS que eles deixaram de cobrar sobre exportações (Lei Kandir). O acordo saiu depois de uma decisão do STF (ADO 25) e as parcelas vão até 2037."],
+        "IOF-Ouro": ["IOF-Ouro", "Imposto sobre o ouro vendido como investimento. A maior parte (70%) vai para a cidade onde o ouro foi extraído."]
+      };
+      var usados = ["FPM"];
+      lt += linha(EXPL.FPM[0], moeda(t.fpm), ant && ant.fpm ? variacao(t.fpm, ant.fpm, ant.ano) : "");
+      var tipos = t.por_tipo || {};
+      Object.keys(tipos).filter(function (k) { var K = k.toUpperCase(); return K.indexOf("FUNDEB") === -1 && K.indexOf("FPM") !== 0 && tipos[k] > 0; })
+        .slice(0, 6).forEach(function (k) { lt += linha(EXPL[k] ? EXPL[k][0] : escapar(k), moeda(tipos[k])); if (EXPL[k]) usados.push(k); });
+      lt += '<details class="bd-escolas bd-mais"><summary>Entenda cada repasse</summary>' + usados.map(function (k) {
+        return "<p><b>" + EXPL[k][0] + ":</b> " + EXPL[k][1] + "</p>";
+      }).join("") + "<p>O Fundeb não aparece aqui porque já está no bloco de Educação.</p></details>";
+      lt += linha("Total das transferências constitucionais", moeda(t.total), "inclui o Fundeb" + (ant && ant.total ? " \u00b7 " + variacao(t.total, ant.total, ant.ano) : ""), true);
+    } else {
+      lt = linha("FPM (Fundo de Participação dos Municípios)", null) + linha("Demais transferências constitucionais", null);
+    }
+    h += grupo(REGIOES.SE.cor, "Transferências da União", t ? periodo(t) : "", lt);
+
+    // Convênios e obras federais
+    if (cUF) {
+      var lc = "";
+      if (cv && cv.qtd) {
+        lc += linha("Convênios em andamento", fmtNum.format(cv.qtd_execucao || 0), cv.qtd > (cv.qtd_execucao || 0) ? fmtNum.format(cv.qtd - (cv.qtd_execucao || 0)) + (cv.qtd - (cv.qtd_execucao || 0) === 1 ? " encerrado" : " encerrados") + " nos últimos 12 meses" : "");
+        lc += linha("Valor combinado", moeda(cv.valor), "somando todos os convênios da lista");
+        lc += linha("Já pago pela União", moeda(cv.liberado), cv.valor ? Math.round(cv.liberado / cv.valor * 100) + "% do combinado" : "");
+        var itensC = (cv.lista || []).map(function (x) {
+          var fim = x[5] ? x[5].split("-").reverse().join("/") : "";
+          return "<li><b>" + escapar(x[0]) + "</b><small>" + moeda(x[2]) + " combinados \u00b7 " + moeda(x[3]) + " pagos \u00b7 " + escapar(x[4]) +
+            (fim ? " \u00b7 vig\u00eancia at\u00e9 " + fim : "") + (x[1] ? " \u00b7 " + escapar(x[1]) : "") + (x[6] ? " \u00b7 com " + escapar(x[6]) : "") + "</small></li>";
+        }).join("");
+        lc += '<details class="bd-escolas bd-conv"><summary>Ver ' + (cv.qtd === 1 ? "o convênio" : "os " + fmtNum.format(cv.qtd) + " convênios") + "</summary><ol>" + itensC + "</ol>" +
+          '<p class="bd-nota-esc">Do maior para o menor valor' + (cv.qtd > (cv.lista || []).length ? " (mostrando os " + cv.lista.length + " maiores)" : "") +
+          ". Convênio é um acordo em que a União paga uma obra, um equipamento ou um projeto específico, como uma creche, uma quadra ou uma ambulância.</p></details>";
+      } else {
+        lc += '<div class="bd-linha"><dt>Nenhum convênio federal em andamento ou encerrado nos últimos 12 meses</dt><dd class="bd-sem">\u2014</dd></div>';
+      }
+      h += grupo("#0E7C86", "Convênios e obras federais", "em andamento e últimos 12 meses · não entram no total recebido", lc);
+    }
+
+    // Programas sociais
+    var mesP = (bf && bf.mes) || (bpc && bpc.mes);
+    function prog(p) { return p ? moeda(p.valor) : null; }
+    function benef(p) { return p ? fmtNum.format(p.beneficiarios || 0) + " beneficiários" : ""; }
+    h += grupo(REGIOES.CO.cor, "Programas sociais", (mesP ? mesRef(mesP) + " · " : "") + "não entram no total recebido",
+      linha("Bolsa Família", prog(bf), benef(bf)) +
+      linha("BPC (Benefício de Prestação Continuada)", prog(bpc), benef(bpc)) +
+      ((bf || bpc) ? '<details class="bd-escolas bd-mais"><summary>Entenda os programas sociais</summary>' +
+        "<p><b>Bolsa Família:</b> dinheiro pago todo mês pelo governo federal direto às famílias de baixa renda inscritas no Cadastro Único, com cartão ou conta da Caixa. O valor mostrado é o total pago às famílias da cidade no mês.</p>" +
+        "<p><b>BPC:</b> um salário mínimo por mês, pago pelo INSS a idosos com 65 anos ou mais e a pessoas com deficiência de baixa renda. Não é aposentadoria e não exige contribuição.</p>" +
+        "<p>Esses valores <b>não entram no total recebido</b> porque vão direto para os moradores, sem passar pelo caixa da prefeitura. O trabalho da prefeitura com o Cadastro Único aparece em Assistência social.</p></details>" : "") +
+      '<div class="bd-linha"><dt>Pé-de-Meia, Farmácia Popular e Minha Casa, Minha Vida</dt><dd class="bd-sem">Em breve</dd></div>');
+
+    if (t) h += '<details class="bd-escolas bd-mais bd-calc"><summary>Como o total recebido é calculado</summary>' +
+      "<p><b>Entra no total:</b> Fundeb, PDDE (inclusive o que vai direto para as escolas), merenda, Salário-Educação e transporte escolar (Educação); o dinheiro do SUS enviado ao fundo municipal de saúde (Saúde); o dinheiro do fundo nacional enviado ao fundo municipal de assistência social (Assistência social); e FPM, royalties, ITR, CIDE e demais transferências da União.</p>" +
+      "<p><b>Não entra:</b> convênios e obras federais, que são pagos aos poucos e aparecem no bloco próprio; Bolsa Família e BPC, pagos direto aos moradores; pagamentos que a União faz direto a hospitais filantrópicos e outras entidades de saúde e assistência; e os repasses do governo do estado, que estão no extrato Estaduais.</p>" +
+      "<p>Tudo o que entra no total usa o mesmo período: de janeiro até o último mês completo publicado.</p></details>";
+    h += '<p class="bd-fontes">Fontes: ' + linkFonte(TESOURO, "Tesouro Nacional") + " (transferências e Fundeb), " +
+      linkFonte(FNDE, "FNDE") + " (alunos considerados no Fundeb" + (fUF && fUF.ano ? " " + fUF.ano : "") + ") e " +
+      linkFonte(PORTAL, "Portal da Transparência") + " (PDDE, merenda, Salário-Educação, transporte escolar, saúde, assistência social, Bolsa Família e BPC). " +
+      linkFonte("https://cidades.ibge.gov.br/", "Ver a cidade no IBGE") + "</p>";
+    h += "</article>";
+
+    // Resumo
+    var r = '<aside class="bd-resumo" aria-label="Resumo do município">';
+    if (t) {
+      var edu = (t.fundeb || 0) + (p ? (p.pdde_total || 0) + (p.pnae || 0) + (p.salario_educacao || 0) + (p.transporte_escolar || 0) : 0);
+      var sau = p && p.saude ? p.saude.total || 0 : 0;
+      var ass = p && p.assistencia ? p.assistencia.total || 0 : 0;
+      var outras = Math.max(0, (t.total || 0) - (t.fundeb || 0));
+      var tot = edu + sau + ass + outras;
+      var partes = [["Educação", edu, "#1F9D6B"], ["Saúde", sau, "#D8504D"], ["Assistência social", ass, "#0E8FA3"], ["Demais transferências", outras, "#3C82F0"]]
+        .filter(function (x) { return x[1] > 0; });
+      r += "<h3>Total recebido em " + periodo(t) + '</h3><p class="bd-resumo-valor">' + curto(tot) + "</p>";
+      r += '<p class="bd-resumo-sub">' + moeda(tot) + "</p>";
+      r += '<div class="bd-barra" role="img" aria-label="Divisão do total entre educação, saúde, assistência social e demais transferências">' + partes.map(function (x) {
+        return '<span style="width:' + (tot ? x[1] / tot * 100 : 0).toFixed(2) + "%;background:" + x[2] + '"></span>';
+      }).join("") + "</div>";
+      r += '<ul class="bd-barra-leg">' + partes.map(function (x) {
+        return '<li><i style="background:' + x[2] + '"></i>' + x[0] + "<b>" + pct(x[1], tot) + "</b></li>";
+      }).join("") + "</ul>";
+      if (bf || bpc) {
+        var soma = (bf ? bf.valor : 0) + (bpc ? bpc.valor : 0);
+        r += '<p class="bd-resumo-nota">Em ' + mesRef(mesP) + ", Bolsa Família e BPC somaram <b style=\"color:#fff\">" + curto(soma) + "</b>, pagos direto aos moradores. Esse valor não entra no total acima.</p>";
+      }
+      if (cv && cv.qtd) {
+        r += '<p class="bd-resumo-nota">Os convênios e obras federais não estão somados neste total, porque são pagos aos poucos, ao longo de vários anos. Eles aparecem no bloco próprio, no extrato.</p>';
+      }
+      if (m.id) r += botoesAcoes(m, e, periodo(t), "quanto dinheiro público chegou a");
+    } else {
+      r += "<h3>Resumo</h3>" + '<p class="bd-resumo-valor" style="font-size:28px">Sem valores para mostrar</p>' +
+        '<p class="bd-resumo-nota">' + (DADOS_CONFIGURADOS ? "Os dados deste município ainda não foram publicados. Volte depois da próxima atualização semanal." : "Os dados oficiais ainda não foram conectados a esta página.") + "</p>";
+    }
+    r += "</aside>";
+
+    $("bd-extrato-conteudo").innerHTML = h + r;
+    if (m.id) { try { history.replaceState(null, "", "#cidade=" + m.id); } catch (er) {} }
+    ligarAcoes();
+    var busca = document.querySelector("#bd .bd-escolas input");
+    if (busca) busca.addEventListener("input", function () {
+      var q = normalizar(busca.value);
+      [].forEach.call(document.querySelectorAll("#bd .bd-escolas li"), function (li) {
+        li.style.display = !q || li.getAttribute("data-n").indexOf(q) !== -1 ? "" : "none";
+      });
+    });
+  }
+
+  /* ---------- Temas ---------- */
+  var TEMAS = [
+    ["Educação", "Fundeb, merenda, transporte escolar e dinheiro direto na escola.", "#1F9D6B", "#E3F4EC", I.edu, FNDE, "FNDE"],
+    ["Programas federais", "Bolsa Família, BPC, Pé-de-Meia e outros benefícios.", "#8A5CD1", "#EFE8FA", I.prog, PORTAL, "Portal da Transparência"],
+    ["Transferências", "Repasses constitucionais e voluntários a estados e municípios.", "#3C82F0", "#E6EFFD", I.repasse, TESOURO, "Tesouro Transparente"],
+    ["Assistência social", "CRAS, Cadastro Único e serviços socioassistenciais.", "#0E8FA3", "#E0F3F6", I.social, PORTAL, "Portal da Transparência"],
+    ["Saúde", "Repasses do SUS, Farmácia Popular e atenção básica.", "#D8504D", "#FBE8E7", I.saude, PORTAL, "Portal da Transparência"],
+    ["Moradia", "Minha Casa, Minha Vida e programas habitacionais.", "#C98A0B", "#FCF1D9", I.casa, PORTAL, "Portal da Transparência"],
+    ["Trabalho e renda", "Seguro-desemprego, abono salarial e qualificação.", "#13377D", "#E4EAF5", I.trabalho, PORTAL, "Portal da Transparência"]
+  ];
+  var ht = "";
+  TEMAS.forEach(function (t) {
+    ht += '<a class="bd-tema" style="--c:' + t[2] + ";--cf:" + t[3] + '" href="' + t[5] + '" target="_blank" rel="noopener">' +
+      '<span class="bd-tema-ico">' + t[4] + "</span><h3>" + t[0] + "</h3><p>" + t[1] + '</p><span class="bd-tema-fonte">' + t[6] + I.externo + "</span></a>";
+  });
+  ht += '<a class="bd-tema bd-tema-guia" style="--c:#F2C14E;--cf:#F2C14E" href="#bd-como"><span class="bd-tema-ico" style="color:#0C2A63">' + I.ajuda +
+    "</span><h3>Como consultar</h3><p>Passo a passo para encontrar e conferir os dados da sua cidade.</p><span class=\"bd-tema-fonte\">Ver o passo a passo</span></a>";
+  $("bd-temas-lista").innerHTML = ht;
+
+  /* ---------- Menu e busca ---------- */
+  var nav = $("bd-nav"), menuBtn = $("bd-menu-btn");
+  menuBtn.addEventListener("click", function () { var a = nav.classList.toggle("bd-aberta"); menuBtn.setAttribute("aria-expanded", a); });
+  Array.prototype.forEach.call(nav.querySelectorAll("a"), function (a) {
+    a.addEventListener("click", function () {
+      Array.prototype.forEach.call(nav.querySelectorAll("a"), function (x) { x.removeAttribute("aria-current"); });
+      a.setAttribute("aria-current", "page"); nav.classList.remove("bd-aberta"); menuBtn.setAttribute("aria-expanded", "false");
+    });
+  });
+  var busca = $("bd-busca"), buscaBtn = $("bd-busca-btn"), buscaInput = $("bd-busca-input"), buscaMsg = $("bd-busca-msg");
+  buscaBtn.addEventListener("click", function () {
+    var a = busca.classList.toggle("bd-aberta"); buscaBtn.setAttribute("aria-expanded", a);
+    if (a) setTimeout(function () { buscaInput.focus(); }, 150);
+  });
+  $("bd-busca-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var q = normalizar(buscaInput.value);
+    if (!q) { buscaMsg.textContent = "Digite o nome de um estado ou de uma cidade."; return; }
+    var est = ESTADOS.filter(function (e) { return normalizar(e.uf) === q || normalizar(e.nome) === q; })[0] ||
+              ESTADOS.filter(function (e) { return normalizar(e.nome).indexOf(q) === 0; })[0];
+    if (est) {
+      buscaMsg.textContent = est.nome + " selecionado. Agora escolha o município.";
+      escolherEstado(est.uf, true).then(function () { selMun.focus(); });
+      return;
+    }
+    if (municipiosAtuais.length) {
+      var idx = -1;
+      for (var i = 0; i < municipiosAtuais.length; i++) {
+        var n = normalizar(municipiosAtuais[i].nome);
+        if (n === q) { idx = i; break; }
+        if (idx < 0 && n.indexOf(q) === 0) idx = i;
+      }
+      if (idx >= 0) {
+        selMun.value = String(idx); btnBuscar.disabled = false;
+        mostrarExtrato(porUF(selUF.value), municipiosAtuais[idx]);
+        buscaMsg.textContent = "Mostrando o extrato de " + municipiosAtuais[idx].nome + ".";
+        $("bd-extrato").scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+    }
+    buscaMsg.textContent = selUF.value
+      ? "Nenhuma cidade com esse nome em " + porUF(selUF.value).nome + ". Confira a grafia ou digite outro estado."
+      : "Nenhum estado com esse nome. Para buscar uma cidade, escolha o estado primeiro.";
+  });
+
+  $("bd-ano").textContent = new Date().getFullYear();
+  marcarTipo();
+  extratoVazio();
+  var UF_COD = { "11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA", "16": "AP", "17": "TO", "21": "MA", "22": "PI", "23": "CE",
+    "24": "RN", "25": "PB", "26": "PE", "27": "AL", "28": "SE", "29": "BA", "31": "MG", "32": "ES", "33": "RJ", "35": "SP", "41": "PR",
+    "42": "SC", "43": "RS", "50": "MS", "51": "MT", "52": "GO", "53": "DF" };
+  var alvo = (location.hash.match(/cidade=(\d{7})/) || [])[1];
+  if (alvo && UF_COD[alvo.slice(0, 2)]) {
+    escolherEstado(UF_COD[alvo.slice(0, 2)], false).then(function () {
+      for (var i = 0; i < municipiosAtuais.length; i++) {
+        if (municipiosAtuais[i].id === alvo) {
+          selMun.value = String(i); btnBuscar.disabled = false;
+          mostrarExtrato(porUF(selUF.value), municipiosAtuais[i]);
+          setTimeout(function () { $("bd-extrato").scrollIntoView({ behavior: "smooth", block: "start" }); }, 300);
+          break;
+        }
+      }
+    });
+  }
+  if (DADOS_CONFIGURADOS) {
+    fetch(URL_DADOS + "status.json", { cache: "no-cache" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (st) {
+        var d = st && dataBR(st.ultima_execucao);
+        if (d) $("bd-atualiza").textContent = "Dados oficiais, atualizados toda segunda-feira \u00b7 \u00faltima atualiza\u00e7\u00e3o: " + d;
+      })
+      .catch(function () {});
+  }
+})();
+</script>
+<!-- ===================== FIM DO CÓDIGO PARA O BLOGGER ===================== -->
+</body>
+</html>
