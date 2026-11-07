@@ -668,6 +668,10 @@ def processar_mes(caminho_zip, siafi_ibge):
             c_func = next((i for i, c in enumerate(cab) if normalizar(c) in ("nome funcao", "funcao")), None)
             c_org = coluna(cab, "orgao", "superior")
             c_ttr = coluna(cab, "tipo", "transferencia")
+            c_diag = [i for i, c in enumerate(cab) if any(k in normalizar(c) for k in
+                                                          ("transferencia", "modalidade", "instrumento", "convenio", "linguagem"))]
+            diag = {}
+            log("   colunas: " + " | ".join(cab))
             if None in (c_uf, c_mun, c_acao, c_fav, c_val):
                 log(f"   colunas inesperadas no arquivo: {cab}")
                 return None
@@ -704,6 +708,11 @@ def processar_mes(caminho_zip, siafi_ibge):
                 valor = numero(row[c_val])
                 if not valor:
                     continue
+                if prog in ("saude", "assist"):
+                    for i in c_diag:
+                        if i < len(row):
+                            k = (prog, cab[i], row[i].strip()[:60])
+                            diag[k] = diag.get(k, 0.0) + valor
                 uf = row[c_uf].strip().upper()
                 try:
                     ibge = siafi_ibge.get(int(row[c_mun]))
@@ -777,6 +786,8 @@ def processar_mes(caminho_zip, siafi_ibge):
                 item[1] += valor
     log(f"   linhas: {linhas_pdde} de PDDE, {linhas_pnae} de merenda e {linhas_saude} de saúde "
         f"({sem_mun} sem município identificado). Coluna de função: {'sim' if c_func is not None else 'não'}.")
+    for k, v in sorted(diag.items(), key=lambda kv: (kv[0][0], kv[0][1], -kv[1]))[:40]:
+        log(f"   diag {k[0]} · {k[1]} = {k[2]} → {v / 1e6:.1f} mi")
     log(f"   assistência social: {linhas_assist} linhas; maiores ações: " +
         "; ".join(f"{k[:70]} → {v / 1e6:.1f} mi" for k, v in sorted(acoes_assist.items(), key=lambda kv: -kv[1])[:6]))
     if nao_achados:
