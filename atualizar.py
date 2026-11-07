@@ -670,6 +670,9 @@ def processar_mes(caminho_zip, siafi_ibge):
             c_org = coluna(cab, "orgao", "superior")
             c_ttr = coluna(cab, "tipo", "transferencia")
             c_mod = coluna(cab, "codigo", "modalidade")
+            c_po = coluna(cab, "nome", "plano", "orcamentario")
+            c_sub = coluna(cab, "nome", "subtitulo")
+            diag_po = {}
             fora = {}   # modalidade -> valor deixado de fora (saúde e assistência)
             if None in (c_uf, c_mun, c_acao, c_fav, c_val):
                 log(f"   colunas inesperadas no arquivo: {cab}")
@@ -713,6 +716,10 @@ def processar_mes(caminho_zip, siafi_ibge):
                 valor = numero(row[c_val])
                 if not valor:
                     continue
+                if prog in ("pdde", "pnae", "se", "pnate", "edu"):
+                    kd = (prog, row[c_po].strip()[:50] if c_po is not None and c_po < len(row) else "?",
+                          row[c_sub].strip()[:40] if c_sub is not None and c_sub < len(row) else "?")
+                    diag_po[kd] = diag_po.get(kd, 0.0) + valor
                 if prog in ("saude", "assist", "edu") and c_mod is not None and c_mod < len(row):
                     # Só entra o repasse fundo a fundo para o município (modalidade 41). Ficam de fora
                     # convênios (40), pagamentos direto a hospitais e entidades privadas (50), estados (30/31) etc.
@@ -808,6 +815,7 @@ def processar_mes(caminho_zip, siafi_ibge):
     if fora:
         log("   saúde e assistência fora do total (não são fundo a fundo para o município), por modalidade: " +
             "; ".join(f"{k} → {v / 1e6:.1f} mi" for k, v in sorted(fora.items(), key=lambda kv: -kv[1])))
+    log("   diag plano: " + "; ".join(f"{k} → {v / 1e6:.1f} mi" for k, v in sorted(diag_po.items(), key=lambda kv: -kv[1])[:40]))
     log("   outros programas da educação: " +
         "; ".join(f"{k[:70]} → {v / 1e6:.1f} mi" for k, v in sorted(acoes_edu.items(), key=lambda kv: -kv[1])[:12]))
     log(f"   assistência social: {linhas_assist} linhas; maiores ações: " +
