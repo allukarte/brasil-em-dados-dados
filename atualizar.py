@@ -712,10 +712,6 @@ def processar_mes(caminho_zip, siafi_ibge):
                     mod = row[c_mod].strip()
                     if mod != "41":
                         fora[mod] = fora.get(mod, 0.0) + valor
-                        if mod == "MU":
-                            k = ("MU", prog, row[c_mod + 1].strip()[:40] if c_mod + 1 < len(row) else "",
-                                 normalizar(row[c_tipo])[:30] if c_tipo is not None else "", acao[:50])
-                            fora[k] = fora.get(k, 0.0) + valor
                         continue
                 uf = row[c_uf].strip().upper()
                 try:
@@ -792,7 +788,7 @@ def processar_mes(caminho_zip, siafi_ibge):
         f"({sem_mun} sem município identificado). Coluna de função: {'sim' if c_func is not None else 'não'}.")
     if fora:
         log("   saúde e assistência fora do total (não são fundo a fundo para o município), por modalidade: " +
-            "; ".join(f"{k} → {v / 1e6:.1f} mi" for k, v in sorted(fora.items(), key=lambda kv: -kv[1])[:14]))
+            "; ".join(f"{k} → {v / 1e6:.1f} mi" for k, v in sorted(fora.items(), key=lambda kv: -kv[1])))
     log(f"   assistência social: {linhas_assist} linhas; maiores ações: " +
         "; ".join(f"{k[:70]} → {v / 1e6:.1f} mi" for k, v in sorted(acoes_assist.items(), key=lambda kv: -kv[1])[:6]))
     if nao_achados:
