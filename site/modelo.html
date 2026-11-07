@@ -712,6 +712,57 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
     var dd = valor === null ? '<dd class="bd-sem">Dado não disponível</dd>' : "<dd>" + valor + (sub ? "<small>" + sub + "</small>" : "") + "</dd>";
     return '<div class="bd-linha' + (total ? " bd-total" : "") + '"><dt>' + rotulo + "</dt>" + dd + "</div>";
   }
+  // Planos orçamentários da educação (nomes do Portal da Transparência, sem acento) -> nome amigável e explicação
+  var PLANOS_EDU = [
+    ["educacao conectada", "PDDE Educação Conectada", "internet de qualidade e equipamentos de conexão nas escolas"],
+    ["pdde basico - primeira infancia", "PDDE Básico – Primeira Infância", "parcela extra para escolas com creche e pré-escola"],
+    ["anos finais", "PDDE – Anos Finais do Ensino Fundamental", "ações da política nacional para o 6º ao 9º ano"],
+    ["crianca alfabetizada", "Compromisso Nacional Criança Alfabetizada", "apoio para que as crianças aprendam a ler e escrever até o fim do 2º ano"],
+    ["equidade - srm", "PDDE Equidade – Salas de Recursos Multifuncionais", "atendimento educacional especializado a alunos da educação especial"],
+    ["equidade - diversidade", "PDDE Equidade – Diversidade e Inclusão", "escolas indígenas, quilombolas, do campo e educação para a diversidade"],
+    ["campo e agua", "PDDE Equidade – Campo e Água", "escolas do campo, inclusive abastecimento de água"],
+    ["pdde estrutura", "PDDE Estrutura", "pequenas obras e adequações nas escolas"],
+    ["demais estrategias", "PDDE – Demais ações", "outras ações do PDDE para a educação básica"],
+    ["dinheiro direto na escola", "PDDE Básico", "parcela anual para manutenção, pequenos reparos e material"],
+    ["pnae - primeira infancia", "Merenda – Primeira Infância", "parcela da merenda das creches e pré-escolas"],
+    ["alimentacao escolar", "Merenda – parcela geral", "merenda dos alunos das demais etapas"],
+    ["caminho da escola", "Caminho da Escola", "compra de ônibus, lanchas e bicicletas para o transporte escolar"],
+    ["apoio ao transporte escolar", "PNATE", "custeio do transporte de alunos da zona rural: combustível, manutenção e contratação do serviço"],
+    ["rio grande do sul", "Apoio emergencial – Rio Grande do Sul", "recuperação das escolas atingidas pelas enchentes"],
+    ["emergencial - rs", "Apoio emergencial – Rio Grande do Sul", "recuperação das escolas atingidas pelas enchentes"],
+    ["emenda individual", "Emenda parlamentar individual", "dinheiro indicado por deputado ou senador"],
+    ["manutencao da educacao infantil", "Apoio à manutenção da educação infantil", "ajuda para manter novas turmas de creche e pré-escola e crianças do Bolsa Família na creche"],
+    ["desenvolvimento da educacao basica", "Apoio ao desenvolvimento da educação básica", "apoio geral do MEC à rede, como formação de professores, materiais e programas específicos"],
+    ["educacao profissional", "Educação profissional e tecnológica", "matrículas em cursos técnicos"],
+    ["jovens e adultos", "EJA com qualificação profissional", "Educação de Jovens e Adultos integrada a cursos de qualificação"],
+    ["diversidade", "Diversidade, direitos humanos e inclusão", "ações de inclusão e valorização da diversidade nas escolas"],
+    ["civico-militar", "Escolas cívico-militares", "programa de escolas cívico-militares"],
+    ["tempo integral", "Escola em Tempo Integral", "ajuda para abrir e manter matrículas em jornada de 7 horas ou mais"],
+    ["valor nao detalhado", "Valor não detalhado no orçamento", "valor que o governo federal não ligou a um programa específico"]
+  ];
+  function rotuloPlano(nome) {
+    var n = normalizar(nome);
+    for (var i = 0; i < PLANOS_EDU.length; i++) if (n.indexOf(PLANOS_EDU[i][0]) !== -1) return [PLANOS_EDU[i][1], PLANOS_EDU[i][2]];
+    var t = String(nome || "").toLowerCase();
+    return [t.charAt(0).toUpperCase() + t.slice(1), ""];
+  }
+  function juntarPlanos(lista) {
+    var por = {}, ordem = [];
+    (lista || []).forEach(function (x) {
+      var r = rotuloPlano(x[0]);
+      if (!por[r[0]]) { por[r[0]] = [r[0], 0, r[1]]; ordem.push(r[0]); }
+      por[r[0]][1] += x[1];
+    });
+    return ordem.map(function (k) { return por[k]; }).sort(function (a, b) { return b[1] - a[1]; });
+  }
+  function itemPlano(x) {
+    return "<p><b>" + escapar(x[0]) + ": " + moeda(x[1]) + ".</b>" + (x[2] ? " " + x[2].charAt(0).toUpperCase() + x[2].slice(1) + "." : "") + "</p>";
+  }
+  function listaPlanos(lista, resumo) {
+    var j = juntarPlanos(lista);
+    if (j.length < 2) return "";
+    return '<details class="bd-escolas bd-mais"><summary>' + resumo + "</summary>" + j.map(itemPlano).join("") + "</details>";
+  }
   function linhaRepasse(rotulo, v, sub) {
     if (!v) return '<div class="bd-linha"><dt>' + rotulo + '</dt><dd class="bd-sem">Nenhum repasse no período</dd></div>';
     return linha(rotulo, moeda(v), sub);
@@ -865,7 +916,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
       outros: ["Outros repasses para a saúde", "demais valores do estado que a prefeitura marcou como saúde"]
     }],
     educacao: ["Educação", {
-      programas: ["Programas estaduais de educação", "como transporte escolar e apoio à rede municipal; cada estado tem seus programas"],
+      programas: ["Programas estaduais de educação", "dinheiro do estado para a rede municipal, como transporte de alunos (inclusive da rede estadual), merenda e apoio às escolas que o município assumiu do estado; cada estado tem seus programas e regras"],
       convenios: ["Convênios de educação", "acordos com o governo do estado para um projeto ou compra específica na educação"],
       obras: ["Obras e equipamentos de educação", "dinheiro para construir, reformar ou equipar escolas e creches"],
       especial: ["Transferência especial", "dinheiro mandado direto à prefeitura, sem convênio"],
@@ -929,7 +980,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
         "<p>Esse dinheiro é da cidade por direito: o estado só arrecada e entrega. Não depende de convênio nem de pedido da prefeitura.</p></details>";
       h += grupo("#7C4DCC", "Impostos e royalties repartidos com a cidade", per, li);
       var lp = linhaRepasse("Saúde", v.saude, "repasses do estado para o SUS do município") +
-        linhaRepasse("Educação", v.educacao, "programas estaduais, como transporte escolar") +
+        linhaRepasse("Educação", v.educacao, "programas estaduais, como transporte escolar; o Fundeb fica no extrato Federais") +
         linhaRepasse("Assistência social", v.assistencia, "repasses do fundo estadual de assistência social") +
         detalheEstado(s.d, ["saude", "educacao", "assistencia"]);
       h += grupo("#D8504D", "Saúde, educação e assistência social", per, lp);
@@ -938,7 +989,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
         linha("Total recebido do estado", moeda(s.total), "", true) +
         '<details class="bd-escolas bd-mais"><summary>Como o total é calculado</summary>' +
         "<p><b>Entra no total:</b> tudo o que aparece neste extrato, ou seja, impostos e royalties repartidos, saúde, educação, assistência social, convênios, obras e demais repasses do governo do estado.</p>" +
-        "<p><b>Não entra:</b> o dinheiro da União (está no extrato Federais) e o que o estado gasta direto na cidade sem passar pela prefeitura, como escolas e hospitais estaduais.</p>" +
+        "<p><b>Não entra:</b> o dinheiro da União (está no extrato Federais); o Fundeb, que também fica no extrato Federais, mesmo sendo formado em boa parte por impostos do estado; e o que o estado gasta direto na cidade sem passar pela prefeitura, como escolas e hospitais estaduais.</p>" +
         "<p>Os valores são os que a prefeitura registrou na contabilidade enviada ao Tesouro Nacional, de janeiro até o último mês enviado.</p></details>";
       h += grupo("#3C82F0", "Convênios e outros", per, lo);
       h += '<p class="bd-fontes">Fonte: ' + linkFonte(SICONFI, "Tesouro Nacional — Siconfi") +
@@ -1027,6 +1078,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
             "a cidade <b>não recebe</b> VAAF, VAAT nem VAAR.") + "</p>" +
           "<p style=\"font-size:13.5px\">VAAF: para estados com pouco dinheiro por aluno. VAAT: para redes com pouco dinheiro por aluno. VAAR: prêmio por gestão e aprendizagem.</p>";
       }
+      mais += "<p><b>De onde vem o dinheiro:</b> cada estado tem um fundo formado por 20% de vários impostos do estado e das cidades (ICMS, IPVA, ITCMD, FPE, FPM, ITR e IPI-Exportação). O fundo é dividido entre a rede estadual e as redes municipais conforme o número de alunos matriculados, com pesos diferentes para creche, tempo integral, educação especial e outras etapas. A União completa com pelo menos 23% a mais (VAAF, VAAT e VAAR). Por isso a maior parte do Fundeb vem de impostos do próprio estado e das cidades, e não da União.</p>";
       mais += "<p>O Fundeb paga o funcionamento da rede municipal. Pelo menos <b>70% vai para sal\u00e1rios</b> de professores e outros profissionais da educa\u00e7\u00e3o; o resto cobre manuten\u00e7\u00e3o, material e transporte.</p>";
       mais += "<p>Este \u00e9 o total que a prefeitura recebeu. O Portal da Transpar\u00eancia mostra s\u00f3 a parte que vem de impostos federais, por isso l\u00e1 o valor \u00e9 menor.</p>";
       le += '<details class="bd-escolas bd-mais"><summary>Entenda o Fundeb</summary>' + mais + "</details>";
@@ -1045,6 +1097,8 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
       if (pUF && t && periodo(pUF) !== periodo(t)) subP += (subP ? " · " : "") + periodo(pUF);
       le += linha("Dinheiro Direto na Escola (PDDE)", p.pdde_total ? moeda(p.pdde_total) : moeda(0), subP);
       le += listaEscolas(p);
+      var pl = p.planos || {};
+      le += listaPlanos(pl.pdde, "Ver o PDDE por programa");
       var subM = "repassado \u00e0 prefeitura";
       if (p.pnae && f && f.matriculas) {
         var vm = porAlunoUF(function (o) { return o.pnae; }, e.uf, pUF, fUF);
@@ -1054,8 +1108,27 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
         if (rm) subM += "<br>" + rm[0] + "\u00aa de " + rm[1] + " cidades de " + e.uf + " em merenda por aluno";
       }
       le += linha("Merenda escolar (PNAE)", p.pnae ? moeda(p.pnae) : moeda(0), subM);
+      le += listaPlanos(pl.pnae, "Ver a merenda por etapa");
       if ("salario_educacao" in p) le += linhaRepasse("Salário-Educação", p.salario_educacao, "cota do município, para a educação básica");
-      if ("transporte_escolar" in p) le += linhaRepasse("Transporte escolar (PNATE)", p.transporte_escolar, "para levar alunos da zona rural");
+      if ("transporte_escolar" in p) {
+        var temCaminho = (pl.pnate || []).some(function (x) { return normalizar(x[0]).indexOf("caminho da escola") !== -1; });
+        le += linhaRepasse(temCaminho ? "Transporte escolar (PNATE e Caminho da Escola)" : "Transporte escolar (PNATE)", p.transporte_escolar,
+          temCaminho ? "transporte de alunos da zona rural e compra de veículos" : "para levar alunos da zona rural");
+        le += listaPlanos(pl.pnate, "Ver o transporte por programa");
+      }
+      var eo = p.educacao_outros || [], somaEo = eo.reduce(function (a, x) { return a + x[1]; }, 0);
+      if (eo.length) {
+        le += linha("Outros programas do MEC e do FNDE", moeda(somaEo), eo.length === 1 ? "1 programa" : eo.length + " programas");
+        le += '<details class="bd-escolas bd-mais"><summary>Ver ' + (eo.length === 1 ? "o programa" : "os " + eo.length + " programas") + "</summary>" +
+          juntarPlanos(eo).map(itemPlano).join("") +
+          "<p>Do maior para o menor valor. Obras pagas pelo FNDE, como escolas e creches, ficam no bloco de convênios. Alguns programas são pagos por termo de compromisso e podem aparecer também na lista de convênios, que não entra no total.</p></details>";
+      }
+      le += '<details class="bd-escolas bd-mais"><summary>Entenda os programas da educação</summary>' +
+        "<p><b>PDDE (Dinheiro Direto na Escola):</b> o FNDE deposita uma vez ou duas por ano na conta da associação de cada escola (APM, caixa escolar) para pequenos reparos, material e projetos. Escolas sem associação recebem pela prefeitura. A lista mostra quanto cada escola recebeu.</p>" +
+        "<p><b>Merenda (PNAE):</b> o FNDE paga em 10 parcelas por ano (fevereiro a novembro) um valor por aluno e por dia letivo, que muda conforme a etapa (creche, pré-escola, fundamental, tempo integral, indígena e quilombola). Pelo menos 45% deve ser usado na compra de alimentos da agricultura familiar.</p>" +
+        "<p><b>Salário-Educação:</b> contribuição de 2,5% sobre a folha de pagamento das empresas. Uma parte volta para as redes de ensino, dividida pelo número de alunos. Pode ser usada em despesas da educação básica, menos o salário dos professores.</p>" +
+        "<p><b>Transporte escolar (PNATE):</b> valor por aluno da zona rural que usa transporte escolar, pago em parcelas durante o ano para combustível, manutenção e contratação do serviço. Quando a cidade recebe dinheiro do <b>Caminho da Escola</b> para comprar ônibus, ele aparece na mesma linha (e pode aparecer também na lista de convênios, que não entra no total).</p>" +
+        "<p>Os valores são o que o governo federal pagou de janeiro até o último mês completo. Todos entram no total da Educação.</p></details>";
     } else {
       le += linha("Dinheiro Direto na Escola (PDDE)", null) + linha("Merenda escolar (PNAE)", null) + linha("Salário-Educação", null);
     }
@@ -1152,7 +1225,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
       '<div class="bd-linha"><dt>Pé-de-Meia, Farmácia Popular e Minha Casa, Minha Vida</dt><dd class="bd-sem">Em breve</dd></div>');
 
     if (t) h += '<details class="bd-escolas bd-mais bd-calc"><summary>Como o total recebido é calculado</summary>' +
-      "<p><b>Entra no total:</b> Fundeb, PDDE (inclusive o que vai direto para as escolas), merenda, Salário-Educação e transporte escolar (Educação); o dinheiro do SUS enviado ao fundo municipal de saúde (Saúde); o dinheiro do fundo nacional enviado ao fundo municipal de assistência social (Assistência social); e FPM, royalties, ITR, CIDE e demais transferências da União.</p>" +
+      "<p><b>Entra no total:</b> Fundeb, PDDE (inclusive o que vai direto para as escolas), merenda, Salário-Educação, transporte escolar e outros programas do MEC e do FNDE (Educação); o dinheiro do SUS enviado ao fundo municipal de saúde (Saúde); o dinheiro do fundo nacional enviado ao fundo municipal de assistência social (Assistência social); e FPM, royalties, ITR, CIDE e demais transferências da União.</p>" +
       "<p><b>Não entra:</b> convênios e obras federais, que são pagos aos poucos e aparecem no bloco próprio; Bolsa Família e BPC, pagos direto aos moradores; pagamentos que a União faz direto a hospitais filantrópicos e outras entidades de saúde e assistência; e os repasses do governo do estado, que estão no extrato Estaduais.</p>" +
       "<p>Tudo o que entra no total usa o mesmo período: de janeiro até o último mês completo publicado.</p></details>";
     h += '<p class="bd-fontes">Fontes: ' + linkFonte(TESOURO, "Tesouro Nacional") + " (transferências e Fundeb), " +
@@ -1164,7 +1237,8 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
     // Resumo
     var r = '<aside class="bd-resumo" aria-label="Resumo do município">';
     if (t) {
-      var edu = (t.fundeb || 0) + (p ? (p.pdde_total || 0) + (p.pnae || 0) + (p.salario_educacao || 0) + (p.transporte_escolar || 0) : 0);
+      var edu = (t.fundeb || 0) + (p ? (p.pdde_total || 0) + (p.pnae || 0) + (p.salario_educacao || 0) + (p.transporte_escolar || 0) +
+        (p.educacao_outros || []).reduce(function (a, x) { return a + x[1]; }, 0) : 0);
       var sau = p && p.saude ? p.saude.total || 0 : 0;
       var ass = p && p.assistencia ? p.assistencia.total || 0 : 0;
       var outras = Math.max(0, (t.total || 0) - (t.fundeb || 0));
