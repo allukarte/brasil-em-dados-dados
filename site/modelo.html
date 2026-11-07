@@ -164,6 +164,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
 #bd .bd-escolas li{display:flex;justify-content:space-between;gap:12px;padding:7px 4px;font-size:14.5px;border-bottom:1px solid var(--linha-2)}
 #bd .bd-escolas li span{color:var(--tinta)}
 #bd .bd-escolas li b{font-variant-numeric:tabular-nums;white-space:nowrap}
+#bd .bd-escolas li span small{display:block;font-size:12.5px;line-height:1.45;color:var(--tinta-2);margin-top:2px}
 #bd .bd-mais p{font-size:14.5px;color:var(--tinta-2);margin:4px 0 8px}
 #bd .bd-mais .bd-det-tit{margin:12px 0 2px;color:var(--tinta)}
 #bd .bd-mais .bd-det-tit:first-of-type{margin-top:4px}
@@ -758,6 +759,44 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
   function itemPlano(x) {
     return "<p><b>" + escapar(x[0]) + ": " + moeda(x[1]) + ".</b>" + (x[2] ? " " + x[2].charAt(0).toUpperCase() + x[2].slice(1) + "." : "") + "</p>";
   }
+  var FAMILIAS_PDDE = [
+    ["PDDE Básico", "parcela que toda escola com unidade executora recebe, conforme o número de alunos"],
+    ["PDDE Qualidade", "ações para melhorar o ensino e a aprendizagem, como Educação Conectada, alfabetização e anos finais do fundamental"],
+    ["PDDE Estrutura", "adequações e pequenas obras nas escolas"],
+    ["PDDE Equidade", "ações para escolas e alunos com necessidades específicas, como salas de recursos da educação especial, escolas do campo, indígenas e quilombolas"],
+    ["Outras ações do PDDE", ""]
+  ];
+  function familiaPdde(nome) {
+    var n = normalizar(nome);
+    if (n.indexOf("equidade") !== -1) return 3;
+    if (n.indexOf("estrutura") !== -1) return 2;
+    if (/qualidade|conectada|alfabetiza|anos finais|tempo integral|ensino medio/.test(n)) return 1;
+    if (n.indexOf("basico") !== -1 || n.indexOf("dinheiro direto na escola") !== -1) return 0;
+    return 4;
+  }
+  function listaPdde(lista, cap) {
+    if (!lista || !lista.length) return "";
+    var fam = FAMILIAS_PDDE.map(function () { return { total: 0, capital: 0, itens: {} , ordem: [] }; });
+    lista.forEach(function (x) {
+      var f = fam[familiaPdde(x[0])], r = rotuloPlano(x[0]), k = 0;
+      f.total += x[1];
+      if (!f.itens[r[0]]) { f.itens[r[0]] = [r[0], 0, 0, r[1]]; f.ordem.push(r[0]); }
+      f.itens[r[0]][1] += x[1]; f.itens[r[0]][2] += k;
+    });
+    var h = fam.map(function (f, i) {
+      if (!f.total) return "";
+      var itens = f.ordem.map(function (k) { return f.itens[k]; }).sort(function (a, b) { return b[1] - a[1]; });
+      return '<p class="bd-det-tit"><b>' + FAMILIAS_PDDE[i][0] + ": " + moeda(f.total) + "</b></p>" +
+        (itens.length > 1 || itens[0][0] !== FAMILIAS_PDDE[i][0] ? itens.map(function (x) {
+          return "<p>" + escapar(x[0]) + ": <b>" + moeda(x[1]) + "</b>" + (x[3] ? ". " + x[3].charAt(0).toUpperCase() + x[3].slice(1) : "") + ".</p>";
+        }).join("") : "");
+    }).join("");
+    var usadas = fam.map(function (f, i) { return f.total && FAMILIAS_PDDE[i][1] ? "<b>" + FAMILIAS_PDDE[i][0] + ":</b> " + FAMILIAS_PDDE[i][1] + "." : ""; })
+      .filter(Boolean).join(" ");
+    return '<details class="bd-escolas bd-mais"><summary>Ver o PDDE por tipo</summary>' + h +
+      (usadas ? "<p>" + usadas + "</p>" : "") +
+      "<p>Soma de todas as escolas da cidade, mais o que foi pago pela prefeitura. Os tipos de cada escola aparecem na lista de escolas. A divisão entre custeio e capital não é publicada nos dados abertos do governo federal; ela pode ser consultada escola por escola no sistema do FNDE.</p></details>";
+  }
   function listaPlanos(lista, resumo) {
     var j = juntarPlanos(lista);
     if (j.length < 2) return "";
@@ -887,13 +926,21 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
   function listaEscolas(p) {
     var esc = p.pdde_escolas || [];
     if (!esc.length) return "";
+    var nomes = ((p.planos || {}).pdde || []).map(function (x) { return rotuloPlano(x[0])[0]; });
     var itens = esc.map(function (x) {
-      return '<li data-n="' + escapar(normalizar(x[0])) + '"><span>' + escapar(x[0]) + "</span><b>" + moeda(x[1]) + "</b></li>";
+      var det = "";
+      if (x.length > 3) {
+        var tipos = [];
+        (x[3] || []).forEach(function (i) { if (nomes[i] && tipos.indexOf(nomes[i]) === -1) tipos.push(nomes[i]); });
+        if (tipos.length) det = "<small>" + escapar(tipos.join(", ")) + "</small>";
+      }
+      return '<li data-n="' + escapar(normalizar(x[0])) + '"><span>' + escapar(x[0]) + det + "</span><b>" + moeda(x[1]) + "</b></li>";
     }).join("");
     return '<details class="bd-escolas"><summary>Ver ' + (esc.length === 1 ? "a escola" : "as " + fmtNum.format(esc.length) + " escolas") + "</summary>" +
       (esc.length > 12 ? '<input type="search" placeholder="Procurar escola pelo nome" aria-label="Procurar escola pelo nome">' : "") +
       "<ol>" + itens + "</ol>" +
-      '<p class="bd-nota-esc">Valores pagos às unidades executoras (conselhos e caixas escolares), do maior para o menor.</p></details>';
+      '<p class="bd-nota-esc">Valores pagos às unidades executoras (conselhos e caixas escolares), do maior para o menor' +
+      (esc.length && esc[0].length > 3 ? ", com os tipos de PDDE que cada escola recebeu" : "") + ".</p></details>";
   }
 
   function mostrarEstadual(e, m) {
@@ -1098,7 +1145,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
       le += linha("Dinheiro Direto na Escola (PDDE)", p.pdde_total ? moeda(p.pdde_total) : moeda(0), subP);
       le += listaEscolas(p);
       var pl = p.planos || {};
-      le += listaPlanos(pl.pdde, "Ver o PDDE por programa");
+      le += listaPdde(pl.pdde, p.pdde_capital);
       var subM = "repassado \u00e0 prefeitura";
       if (p.pnae && f && f.matriculas) {
         var vm = porAlunoUF(function (o) { return o.pnae; }, e.uf, pUF, fUF);
