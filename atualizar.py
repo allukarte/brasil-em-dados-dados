@@ -1308,7 +1308,17 @@ SICONFI_MSC = "https://apidatalake.tesouro.gov.br/ords/siconfi/tt/msc_orcamentar
 PASTA_ESTADUAIS = os.path.join(PASTA, "estaduais")
 ESTADUAIS_MINUTOS = 170      # tempo máximo por execução; o que faltar fica para a próxima semana
 ESTADUAIS_PARALELO = 4       # consultas simultâneas (o Siconfi é público; não exagerar)
-CATEGORIAS_ESTADO = ("icms", "ipva", "ipi", "cide", "saude", "educacao", "assistencia", "outros")
+CATEGORIAS_ESTADO = ("icms", "ipva", "ipi", "cide", "royalties", "saude", "educacao", "assistencia", "outros")
+COM_DETALHE = ("saude", "educacao", "assistencia", "outros")
+VERSAO_ESTADUAIS = 2         # muda quando o formato gravado muda (força nova consulta)
+
+
+def codigo_fonte(fonte):
+    f = str(fonte or "")
+    try:
+        return int(f[1:4]) if len(f) >= 4 else -1
+    except ValueError:
+        return -1
 
 
 def categoria_estado(natureza, fonte):
@@ -1323,10 +1333,9 @@ def categoria_estado(natureza, fonte):
         return "ipi"
     if n.startswith("172153"):
         return "cide"
-    try:
-        cod = int(f[1:4]) if len(f) >= 4 else -1
-    except ValueError:
-        cod = -1
+    cod = codigo_fonte(f)
+    if n.startswith("1722") or cod == 705:
+        return "royalties"
     if 600 <= cod <= 659:
         return "saude"
     if 660 <= cod <= 669:
@@ -1336,11 +1345,31 @@ def categoria_estado(natureza, fonte):
     return "outros"
 
 
+def detalhe_estado(natureza, fonte):
+    """Tipo do repasse dentro da categoria, pela fonte de recursos (Portaria STN 710/2021)."""
+    n, cod = str(natureza or ""), codigo_fonte(fonte)
+    if cod == 710:
+        return "especial"          # transferência especial dos estados (sem convênio)
+    if n.startswith("2"):
+        return "obras"             # receita de capital: obras e equipamentos
+    if cod in (571, 575, 632, 636, 665, 701):
+        return "convenios"
+    if cod == 621:
+        return "sus"               # fundo a fundo do SUS estadual
+    if cod == 661:
+        return "feas"              # fundo estadual de assistência social
+    if cod == 576:
+        return "programas"         # programas estaduais de educação
+    return "outros"
+
+
 def msc_estado(ibge, ano, mes):
     """Receitas recebidas do estado de janeiro até o mês pedido (saldo acumulado da Matriz de
     Saldos Contábeis que a prefeitura envia ao Tesouro). Devolve dict, {} se a prefeitura ainda
     não enviou esse mês, ou None se o Siconfi não respondeu."""
     soma = {c: 0.0 for c in CATEGORIAS_ESTADO}
+    det = {c: {} for c in COM_DETALHE}
+    uniao = {"assistencia": 0.0, "enfermagem": 0.0}
     achou = False
     offset = 0
     for _ in range(10):
@@ -1356,21 +1385,41 @@ def msc_estado(ibge, ano, mes):
             if str(i.get("conta_contabil")) != "621200000":
                 continue
             nat = str(i.get("natureza_receita") or "")
+            fonte = i.get("fonte_recursos")
+            if nat.startswith("171") or nat.startswith("241"):
+                # dois repasses da União guardados para uso futuro no extrato federal
+                cod = codigo_fonte(fonte)
+                if nat.startswith("1716") or cod == 660:
+                    uniao["assistencia"] += numero(i.get("valor"))
+                elif cod == 605:
+                    uniao["enfermagem"] += numero(i.get("valor"))
+                continue
             if not (nat.startswith("172") or nat.startswith("242")):
                 continue
-            soma[categoria_estado(nat, i.get("fonte_recursos"))] += numero(i.get("valor"))
+            cat = categoria_estado(nat, fonte)
+            soma[cat] += numero(i.get("valor"))
+            if cat in det:
+                k = detalhe_estado(nat, fonte)
+                det[cat][k] = det[cat].get(k, 0.0) + numero(i.get("valor"))
         if not resp.get("hasMore"):
             break
         offset += len(itens) or 5000
     if not achou:
         return {}
-    return {c: round(v, 2) for c, v in soma.items() if abs(v) >= 0.005}
+    v = {c: round(x, 2) for c, x in soma.items() if abs(x) >= 0.005}
+    d = {}
+    for c, partes in det.items():
+        p = {k: round(x, 2) for k, x in partes.items() if abs(x) >= 0.005}
+        if p:
+            d[c] = p
+    u = {k: round(x, 2) for k, x in uniao.items() if abs(x) >= 0.005}
+    return {"v": v, "d": d, "u": u}
 
 
 def meses_a_tentar(anterior, hoje):
     """Meses a consultar, do mais novo para o mais antigo, parando no que já temos."""
     ultimo = (hoje.year, hoje.month - 1) if hoje.month > 1 else (hoje.year - 1, 12)
-    tem = (anterior["ano"], anterior["mes"]) if anterior else None
+    tem = (anterior["ano"], anterior["mes"]) if anterior and anterior.get("ver") == VERSAO_ESTADUAIS else None
     lista = []
     a, m = ultimo
     while len(lista) < (4 if tem else 6):
@@ -1403,8 +1452,13 @@ def atualizar_estaduais(ufs, municipios):
                 falhas_seguidas[0] += 1
                 return anterior
             falhas_seguidas[0] = 0
-            if r:
-                return {"ano": ano, "mes": mes, "v": r, "total": round(sum(r.values()), 2)}
+            if r and r["v"]:
+                novo = {"ano": ano, "mes": mes, "ver": VERSAO_ESTADUAIS, "v": r["v"], "total": round(sum(r["v"].values()), 2)}
+                if r["d"]:
+                    novo["d"] = r["d"]
+                if r["u"]:
+                    novo["u"] = r["u"]
+                return novo
         return anterior
 
     for uf in ufs:
