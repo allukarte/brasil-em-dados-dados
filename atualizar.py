@@ -649,7 +649,8 @@ def processar_mes(caminho_zip, siafi_ibge):
     acoes_assist = {}
     acoes_edu = {}
     nao_achados = {}
-    sem_local = {}   # uf -> cnpj -> [nome, valor]  (pagamentos a escolas sem município no arquivo)
+    sem_local = {}   # uf -> cnpj -> [nome, valor]
+    sem_local_planos = {}   # uf -> cnpj -> {plano: valor}  (pagamentos a escolas sem município no arquivo)
     with zipfile.ZipFile(caminho_zip) as z:
         nome_csv = next((n for n in z.namelist() if n.lower().endswith(".csv")), None)
         if not nome_csv:
@@ -671,8 +672,6 @@ def processar_mes(caminho_zip, siafi_ibge):
             c_ttr = coluna(cab, "tipo", "transferencia")
             c_mod = coluna(cab, "codigo", "modalidade")
             c_po = coluna(cab, "nome", "plano", "orcamentario")
-            c_sub = coluna(cab, "nome", "subtitulo")
-            diag_po = {}
             fora = {}   # modalidade -> valor deixado de fora (saúde e assistência)
             if None in (c_uf, c_mun, c_acao, c_fav, c_val):
                 log(f"   colunas inesperadas no arquivo: {cab}")
@@ -716,17 +715,17 @@ def processar_mes(caminho_zip, siafi_ibge):
                 valor = numero(row[c_val])
                 if not valor:
                     continue
-                if prog in ("pdde", "pnae", "se", "pnate", "edu"):
-                    kd = (prog, row[c_po].strip()[:50] if c_po is not None and c_po < len(row) else "?",
-                          row[c_sub].strip()[:40] if c_sub is not None and c_sub < len(row) else "?")
-                    diag_po[kd] = diag_po.get(kd, 0.0) + valor
+                plano = " ".join(row[c_po].split()) if c_po is not None and c_po < len(row) else ""
+                if not plano or normalizar(plano) in ("multiplo", "sem informacao"):
+                    plano = " ".join(row[c_acao].split())
                 if prog in ("saude", "assist", "edu") and c_mod is not None and c_mod < len(row):
                     # Só entra o repasse fundo a fundo para o município (modalidade 41). Ficam de fora
                     # convênios (40), pagamentos direto a hospitais e entidades privadas (50), estados (30/31) etc.
                     mod = row[c_mod].strip()
                     # O FNDE paga a rede municipal pela modalidade 40; obras do FNDE (PAR) ficam no bloco de convênios.
                     if prog == "edu" and mod == "40" and not any(k in acao for k in (
-                            "infraestrutura", "implantacao de escolas", "construcao", "reforma", "ampliacao")):
+                            "infraestrutura", "implantacao", "construcao", "reforma", "ampliacao", "ensino superior",
+                            "instituicoes federais")):
                         mod = "41"
                     if mod != "41":
                         if prog != "edu":
@@ -748,6 +747,8 @@ def processar_mes(caminho_zip, siafi_ibge):
                 if not ibge and uf in UFS_NOMES and eh_escola:
                     item = sem_local.setdefault(uf, {}).setdefault(cnpj, [nome_escola(favorecido), 0.0])
                     item[1] += valor
+                    pl = sem_local_planos.setdefault(uf, {}).setdefault(cnpj, {})
+                    pl[plano] = pl.get(plano, 0.0) + valor
                     linhas_pdde += 1
                     continue
                 if not ibge or uf not in UFS_NOMES:
@@ -755,12 +756,11 @@ def processar_mes(caminho_zip, siafi_ibge):
                     exemplo = (uf, row[c_mun].strip(), row[c_nmun].strip() if c_nmun is not None else "")
                     nao_achados[exemplo] = nao_achados.get(exemplo, 0) + 1
                     continue
-                m = resumo.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}, "edu": {}})
+                m = resumo.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}, "edu": {}, "planos": {}})
                 if prog == "edu":
                     if not eh_estadual(favorecido) and "estadual" not in tipo and "federal" not in tipo \
                             and "pessoa fisica" not in tipo:
-                        nome_acao = " ".join(row[c_acao].split())
-                        m["edu"][nome_acao] = m["edu"].get(nome_acao, 0.0) + valor
+                        m["edu"][plano] = m["edu"].get(plano, 0.0) + valor
                         acoes_edu[acao] = acoes_edu.get(acao, 0.0) + valor
                     continue
                 if prog == "assist":
@@ -797,25 +797,32 @@ def processar_mes(caminho_zip, siafi_ibge):
                 if prog in ("se", "pnate"):
                     if not eh_estadual(favorecido):
                         m[prog] += valor
+                        pl = m["planos"].setdefault(prog, {})
+                        pl[plano] = pl.get(plano, 0.0) + valor
                     continue
                 if prog == "pnae":
                     if not eh_estadual(favorecido):
                         m["pnae"] += valor
+                        pl = m["planos"].setdefault("pnae", {})
+                        pl[plano] = pl.get(plano, 0.0) + valor
                     linhas_pnae += 1
                     continue
                 linhas_pdde += 1
                 if not eh_escola:
                     if not eh_estadual(favorecido):
                         m["pref"] += valor
+                        pl = m["planos"].setdefault("pdde", {})
+                        pl[plano] = pl.get(plano, 0.0) + valor
                     continue
                 item = m["esc"].setdefault(cnpj, [nome_escola(favorecido), 0.0])
                 item[1] += valor
+                pl = m["planos"].setdefault("pdde", {})
+                pl[plano] = pl.get(plano, 0.0) + valor
     log(f"   linhas: {linhas_pdde} de PDDE, {linhas_pnae} de merenda e {linhas_saude} de saúde "
         f"({sem_mun} sem município identificado). Coluna de função: {'sim' if c_func is not None else 'não'}.")
     if fora:
         log("   saúde e assistência fora do total (não são fundo a fundo para o município), por modalidade: " +
             "; ".join(f"{k} → {v / 1e6:.1f} mi" for k, v in sorted(fora.items(), key=lambda kv: -kv[1])))
-    log("   diag plano: " + "; ".join(f"{k} → {v / 1e6:.1f} mi" for k, v in sorted(diag_po.items(), key=lambda kv: -kv[1])[:40]))
     log("   outros programas da educação: " +
         "; ".join(f"{k[:70]} → {v / 1e6:.1f} mi" for k, v in sorted(acoes_edu.items(), key=lambda kv: -kv[1])[:12]))
     log(f"   assistência social: {linhas_assist} linhas; maiores ações: " +
@@ -834,16 +841,18 @@ def processar_mes(caminho_zip, siafi_ibge):
             m["saude"] = {k: round(v, 2) for k, v in m["saude"].items()}
             m["assist"] = {k: round(v, 2) for k, v in m["assist"].items()}
             m["edu"] = {k: round(v, 2) for k, v in m["edu"].items()}
+            m["planos"] = {g: {k: round(v, 2) for k, v in d.items()} for g, d in m["planos"].items()}
             for v in m["esc"].values():
                 v[1] = round(v[1], 2)
     for itens in sem_local.values():
         for v in itens.values():
             v[1] = round(v[1], 2)
     resumo["_sem_local"] = sem_local
+    resumo["_sem_local_planos"] = sem_local_planos
     return resumo
 
 
-VERSAO_CACHE = "v11"   # mudar este valor obriga o robô a reprocessar todos os meses
+VERSAO_CACHE = "v12"   # mudar este valor obriga o robô a reprocessar todos os meses
 
 
 def caminho_mensal(ano, mes):
@@ -915,16 +924,20 @@ def atualizar_pdde(ufs):
                     perdidos += 1
                     continue
                 achados += 1
-                m = mensal.setdefault(uf, {}).setdefault(destino[1], {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}, "edu": {}})
+                m = mensal.setdefault(uf, {}).setdefault(destino[1], {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}, "edu": {}, "planos": {}})
                 e = m["esc"].setdefault(cnpj, [nome, 0.0])
                 e[1] += valor
+                pls = mensal.get("_sem_local_planos", {}).get(uf, {}).get(cnpj) or {"Dinheiro Direto na Escola": valor}
+                pl = m.setdefault("planos", {}).setdefault("pdde", {})
+                for k, v in pls.items():
+                    pl[k] = pl.get(k, 0.0) + v
     log(f"PDDE: {achados} pagamentos sem município foram localizados pelo CNPJ; {perdidos} ficaram sem localização.")
     for mensal in mensais:
         for uf, muns in mensal.items():
             if uf.startswith("_") or uf not in ufs:
                 continue
             for ibge, m in muns.items():
-                t = total.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}, "edu": {}})
+                t = total.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}, "edu": {}, "planos": {}})
                 t["pref"] += m["pref"]
                 t["pnae"] += m["pnae"]
                 t["se"] += m.get("se", 0.0)
@@ -935,6 +948,10 @@ def atualizar_pdde(ufs):
                     t["assist"][k] = t["assist"].get(k, 0.0) + v
                 for k, v in m.get("edu", {}).items():
                     t["edu"][k] = t["edu"].get(k, 0.0) + v
+                for g, d in m.get("planos", {}).items():
+                    tg = t["planos"].setdefault(g, {})
+                    for k, v in d.items():
+                        tg[k] = tg.get(k, 0.0) + v
                 for cnpj, (nome, valor) in m["esc"].items():
                     e = t["esc"].setdefault(cnpj, [nome, 0.0])
                     e[1] += valor
@@ -958,6 +975,11 @@ def atualizar_pdde(ufs):
                               total=round(sum(t["saude"].values()), 2)),
             }
             outros_edu = sorted(([k, round(v, 2)] for k, v in t["edu"].items() if v > 0), key=lambda x: -x[1])
+            planos = {g: sorted(([k, round(v, 2)] for k, v in d.items() if round(v, 2) > 0), key=lambda x: -x[1])
+                      for g, d in t["planos"].items()}
+            planos = {g: l for g, l in planos.items() if len(l) > 1}
+            if planos:
+                saida["municipios"][ibge]["planos"] = planos
             if outros_edu:
                 saida["municipios"][ibge]["educacao_outros"] = outros_edu
             if t["assist"]:
