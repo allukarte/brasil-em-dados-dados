@@ -13,7 +13,8 @@ Fontes:
 Configuração (feita no GitHub, não é preciso editar este arquivo):
   PORTAL_CHAVE  → segredo com a chave da API do Portal da Transparência
   UFS           → opcional: estados a atualizar, ex. "PE" ou "PE,PB". Vazio = todos
-  FONTES        → opcional: "todas", "tesouro", "portal", "pdde", "fundeb" ou "convenios"
+  FONTES        → opcional: "todas", "tesouro", "portal", "pdde", "fundeb", "convenios" ou "estaduais"
+                  ("estaduais" = ICMS, IPVA, saúde e demais repasses do estado, do Siconfi/Tesouro)
                   ("fundeb" = matrículas da rede municipal consideradas no Fundeb, planilha do FNDE)
                   ("pdde" = Dinheiro Direto na Escola e merenda, do arquivo mensal
                    "Recursos Transferidos" do Portal da Transparência; não precisa de chave)
@@ -1301,6 +1302,138 @@ def atualizar_convenios(ufs):
         pass
 
 
+# ----------------------------------------------------------------- Repasses estaduais (Siconfi / Tesouro)
+
+SICONFI_MSC = "https://apidatalake.tesouro.gov.br/ords/siconfi/tt/msc_orcamentaria"
+PASTA_ESTADUAIS = os.path.join(PASTA, "estaduais")
+ESTADUAIS_MINUTOS = 170      # tempo máximo por execução; o que faltar fica para a próxima semana
+ESTADUAIS_PARALELO = 4       # consultas simultâneas (o Siconfi é público; não exagerar)
+CATEGORIAS_ESTADO = ("icms", "ipva", "ipi", "cide", "saude", "educacao", "assistencia", "outros")
+
+
+def categoria_estado(natureza, fonte):
+    """Classifica uma receita vinda do estado (naturezas 1.7.2 e 2.4.2) pela natureza
+    e pela fonte de recursos padronizada (Portaria STN 710/2021)."""
+    n, f = str(natureza or ""), str(fonte or "")
+    if n.startswith("172150"):
+        return "icms"
+    if n.startswith("172151"):
+        return "ipva"
+    if n.startswith("172152"):
+        return "ipi"
+    if n.startswith("172153"):
+        return "cide"
+    try:
+        cod = int(f[1:4]) if len(f) >= 4 else -1
+    except ValueError:
+        cod = -1
+    if 600 <= cod <= 659:
+        return "saude"
+    if 660 <= cod <= 669:
+        return "assistencia"
+    if 540 <= cod <= 599:
+        return "educacao"
+    return "outros"
+
+
+def msc_estado(ibge, ano, mes):
+    """Receitas recebidas do estado de janeiro até o mês pedido (saldo acumulado da Matriz de
+    Saldos Contábeis que a prefeitura envia ao Tesouro). Devolve dict, {} se a prefeitura ainda
+    não enviou esse mês, ou None se o Siconfi não respondeu."""
+    soma = {c: 0.0 for c in CATEGORIAS_ESTADO}
+    achou = False
+    offset = 0
+    for _ in range(10):
+        url = (f"{SICONFI_MSC}?id_ente={ibge}&an_referencia={ano}&me_referencia={mes}"
+               f"&co_tipo_matriz=MSCC&classe_conta=6&id_tv=ending_balance&offset={offset}")
+        resp = baixar_json(url, tentativas=3, tempo=120)
+        if not isinstance(resp, dict):
+            return None
+        itens = resp.get("items") or []
+        if itens:
+            achou = True
+        for i in itens:
+            if str(i.get("conta_contabil")) != "621200000":
+                continue
+            nat = str(i.get("natureza_receita") or "")
+            if not (nat.startswith("172") or nat.startswith("242")):
+                continue
+            soma[categoria_estado(nat, i.get("fonte_recursos"))] += numero(i.get("valor"))
+        if not resp.get("hasMore"):
+            break
+        offset += len(itens) or 5000
+    if not achou:
+        return {}
+    return {c: round(v, 2) for c, v in soma.items() if abs(v) >= 0.005}
+
+
+def meses_a_tentar(anterior, hoje):
+    """Meses a consultar, do mais novo para o mais antigo, parando no que já temos."""
+    ultimo = (hoje.year, hoje.month - 1) if hoje.month > 1 else (hoje.year - 1, 12)
+    tem = (anterior["ano"], anterior["mes"]) if anterior else None
+    lista = []
+    a, m = ultimo
+    while len(lista) < (4 if tem else 6):
+        if tem and (a, m) <= tem:
+            break
+        lista.append((a, m))
+        a, m = (a, m - 1) if m > 1 else (a - 1, 12)
+    return lista
+
+
+def atualizar_estaduais(ufs, municipios):
+    """Grava dados/estaduais/UF.json com os repasses do estado para cada município
+    (ICMS, IPVA, IPI-Exportação, CIDE, saúde, educação, assistência social e outros),
+    somados de janeiro até o último mês enviado pela prefeitura ao Siconfi."""
+    from concurrent.futures import ThreadPoolExecutor
+    log("===== Repasses estaduais: Siconfi (Tesouro Nacional) =====")
+    os.makedirs(PASTA_ESTADUAIS, exist_ok=True)
+    inicio = time.time()
+    hoje = datetime.now(FUSO_BR).date()
+    total_consultas = [0]
+    falhas_seguidas = [0]
+
+    def um(m, anterior):
+        if time.time() - inicio > ESTADUAIS_MINUTOS * 60 or falhas_seguidas[0] >= 40:
+            return anterior
+        for ano, mes in meses_a_tentar(anterior, hoje):
+            total_consultas[0] += 1
+            r = msc_estado(m["id"], ano, mes)
+            if r is None:
+                falhas_seguidas[0] += 1
+                return anterior
+            falhas_seguidas[0] = 0
+            if r:
+                return {"ano": ano, "mes": mes, "v": r, "total": round(sum(r.values()), 2)}
+        return anterior
+
+    for uf in ufs:
+        if time.time() - inicio > ESTADUAIS_MINUTOS * 60:
+            log("Estaduais: tempo esgotado nesta execução; o restante fica para a próxima.")
+            break
+        if falhas_seguidas[0] >= 40:
+            log("Estaduais: o Siconfi parou de responder; os dados antigos foram mantidos.")
+            break
+        caminho = os.path.join(PASTA_ESTADUAIS, uf + ".json")
+        try:
+            with open(caminho, encoding="utf-8") as f:
+                antigos = json.load(f).get("municipios", {})
+        except Exception:
+            antigos = {}
+        lista = municipios.get(uf, [])
+        lista = sorted(lista, key=lambda m: (antigos.get(m["id"], {}).get("ano", 0), antigos.get(m["id"], {}).get("mes", 0)))
+        with ThreadPoolExecutor(max_workers=ESTADUAIS_PARALELO) as ex:
+            res = list(ex.map(lambda m: (m["id"], um(m, antigos.get(m["id"]))), lista))
+        saida = {i: d for i, d in res if d}
+        novos = sum(1 for i, d in res if d and d != antigos.get(i))
+        with open(caminho, "w", encoding="utf-8") as f:
+            json.dump({"uf": uf, "atualizado_em": datetime.now(FUSO_BR).isoformat(timespec="seconds"),
+                       "fonte": "Tesouro Nacional — Siconfi (Matriz de Saldos Contábeis enviada pelas prefeituras)",
+                       "municipios": saida}, f, ensure_ascii=False, separators=(",", ":"))
+        log(f"Estaduais {uf}: {len(saida)} de {len(lista)} municípios com dados ({novos} atualizados).")
+    log(f"Estaduais: {total_consultas[0]} consultas em {int((time.time() - inicio) / 60)} min.")
+
+
 # ----------------------------------------------------------------- principal
 
 def main():
@@ -1327,6 +1460,12 @@ def main():
         return
     if fontes == "convenios":
         atualizar_convenios(ufs)
+        log("Concluído.")
+        return
+    if fontes == "estaduais":
+        lista_mun = municipios_ibge()
+        if lista_mun:
+            atualizar_estaduais(ufs, lista_mun)
         log("Concluído.")
         return
 
@@ -1379,6 +1518,10 @@ def main():
             atualizar_convenios(ufs)
         except Exception as e:
             log(f"Convênios: erro inesperado ({e.__class__.__name__}: {e}). Os dados antigos foram mantidos.")
+        try:
+            atualizar_estaduais(ufs, municipios)
+        except Exception as e:
+            log(f"Estaduais: erro inesperado ({e.__class__.__name__}: {e}). Os dados antigos foram mantidos.")
 
     with open(os.path.join(PASTA, "status.json"), "w", encoding="utf-8") as f:
         json.dump({"ultima_execucao": datetime.now(FUSO_BR).isoformat(timespec="seconds"),
