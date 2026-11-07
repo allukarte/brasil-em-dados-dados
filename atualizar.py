@@ -735,7 +735,8 @@ def processar_mes(caminho_zip, siafi_ibge):
                             cat = "basica"
                         elif "protecao social especial" in acao:
                             cat = "especial"
-                        elif "gestao" in acao or "igd" in acao or "cadastro" in acao:
+                        elif any(k in acao for k in ("indice de gestao", "igd", "cadastro unico",
+                                                     "identificacao e selecao de publico")):
                             cat = "gestao"
                         else:
                             cat = "outros"
@@ -800,7 +801,7 @@ def processar_mes(caminho_zip, siafi_ibge):
     return resumo
 
 
-VERSAO_CACHE = "v7"   # mudar este valor obriga o robô a reprocessar todos os meses
+VERSAO_CACHE = "v8"   # mudar este valor obriga o robô a reprocessar todos os meses
 
 
 def caminho_mensal(ano, mes):
