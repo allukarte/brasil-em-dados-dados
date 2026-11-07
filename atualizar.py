@@ -721,10 +721,6 @@ def processar_mes(caminho_zip, siafi_ibge):
                 if not plano or normalizar(plano) in ("multiplo", "sem informacao"):
                     plano = " ".join(row[c_acao].split())
                 capital = c_gd is not None and c_gd < len(row) and row[c_gd].strip() == "4"
-                if prog == "pdde":
-                    kd = (row[c_gd].strip() if c_gd is not None else "?",
-                          row[c_gd + 3].strip()[:40] if c_gd is not None and c_gd + 3 < len(row) else "?")
-                    fora[("PDDE",) + kd] = fora.get(("PDDE",) + kd, 0.0) + valor
                 if prog in ("saude", "assist", "edu") and c_mod is not None and c_mod < len(row):
                     # Só entra o repasse fundo a fundo para o município (modalidade 41). Ficam de fora
                     # convênios (40), pagamentos direto a hospitais e entidades privadas (50), estados (30/31) etc.
