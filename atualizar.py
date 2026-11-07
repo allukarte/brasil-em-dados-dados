@@ -992,6 +992,15 @@ def atualizar_pdde(ufs):
                  "atualizado_em": agora, "fonte": "Portal da Transparência — Recursos Transferidos",
                  "municipios": {}}
         for ibge, t in total.get(uf, {}).items():
+            # Escolas com saldo zero ou negativo no ano (devoluções) ficam fora da lista e do total do PDDE;
+            # tiram-se também dos tipos, para a soma dos tipos bater com o total.
+            pdde_pl = dict(t["planos"].get("pdde", {}))
+            for cnpj, (n, v) in t["esc"].items():
+                if v <= 0:
+                    for k, x in t["esc_det"].get(cnpj, {"p": {}})["p"].items():
+                        pdde_pl[k] = pdde_pl.get(k, 0.0) - x
+            if pdde_pl:
+                t["planos"]["pdde"] = pdde_pl
             planos = {g: sorted(([k, round(v, 2)] for k, v in d.items() if round(v, 2) > 0), key=lambda x: -x[1])
                       for g, d in t["planos"].items()}
             ordem_pdde = {k: i for i, (k, _) in enumerate(planos.get("pdde", []))}
