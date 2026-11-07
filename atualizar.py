@@ -647,6 +647,7 @@ def processar_mes(caminho_zip, siafi_ibge):
     resumo = {}   # uf -> ibge -> {"esc": {cnpj: [nome, valor]}, "pref": v, "pnae": v}
     linhas_pdde = linhas_pnae = linhas_saude = linhas_assist = sem_mun = 0
     acoes_assist = {}
+    acoes_edu = {}
     nao_achados = {}
     sem_local = {}   # uf -> cnpj -> [nome, valor]  (pagamentos a escolas sem município no arquivo)
     with zipfile.ZipFile(caminho_zip) as z:
@@ -701,17 +702,24 @@ def processar_mes(caminho_zip, siafi_ibge):
                                                "renda mensal vitalicia", "bolsa familia")) and "gestao" not in acao:
                         continue
                     prog = "assist"
+                elif funcao == "educacao":
+                    # Demais programas do MEC/FNDE para a rede municipal. O Fundeb vem do Tesouro (não repetir aqui).
+                    if any(k in acao for k in ("fundeb", "complementacao da uniao", "pe-de-meia", "pe de meia",
+                                               "incentivo financeiro-educacional", "incentivo financeiro educacional")):
+                        continue
+                    prog = "edu"
                 else:
                     continue
                 valor = numero(row[c_val])
                 if not valor:
                     continue
-                if prog in ("saude", "assist") and c_mod is not None and c_mod < len(row):
+                if prog in ("saude", "assist", "edu") and c_mod is not None and c_mod < len(row):
                     # Só entra o repasse fundo a fundo para o município (modalidade 41). Ficam de fora
                     # convênios (40), pagamentos direto a hospitais e entidades privadas (50), estados (30/31) etc.
                     mod = row[c_mod].strip()
                     if mod != "41":
-                        fora[mod] = fora.get(mod, 0.0) + valor
+                        if prog != "edu":
+                            fora[mod] = fora.get(mod, 0.0) + valor
                         continue
                 uf = row[c_uf].strip().upper()
                 try:
@@ -736,7 +744,14 @@ def processar_mes(caminho_zip, siafi_ibge):
                     exemplo = (uf, row[c_mun].strip(), row[c_nmun].strip() if c_nmun is not None else "")
                     nao_achados[exemplo] = nao_achados.get(exemplo, 0) + 1
                     continue
-                m = resumo.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}})
+                m = resumo.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}, "edu": {}})
+                if prog == "edu":
+                    if not eh_estadual(favorecido) and "estadual" not in tipo and "federal" not in tipo \
+                            and "pessoa fisica" not in tipo:
+                        nome_acao = " ".join(row[c_acao].split())
+                        m["edu"][nome_acao] = m["edu"].get(nome_acao, 0.0) + valor
+                        acoes_edu[acao] = acoes_edu.get(acao, 0.0) + valor
+                    continue
                 if prog == "assist":
                     if not eh_estadual(favorecido) and "estadual" not in tipo and "federal" not in tipo \
                             and "pessoa fisica" not in tipo:
@@ -789,6 +804,8 @@ def processar_mes(caminho_zip, siafi_ibge):
     if fora:
         log("   saúde e assistência fora do total (não são fundo a fundo para o município), por modalidade: " +
             "; ".join(f"{k} → {v / 1e6:.1f} mi" for k, v in sorted(fora.items(), key=lambda kv: -kv[1])))
+    log("   outros programas da educação: " +
+        "; ".join(f"{k[:70]} → {v / 1e6:.1f} mi" for k, v in sorted(acoes_edu.items(), key=lambda kv: -kv[1])[:12]))
     log(f"   assistência social: {linhas_assist} linhas; maiores ações: " +
         "; ".join(f"{k[:70]} → {v / 1e6:.1f} mi" for k, v in sorted(acoes_assist.items(), key=lambda kv: -kv[1])[:6]))
     if nao_achados:
@@ -804,6 +821,7 @@ def processar_mes(caminho_zip, siafi_ibge):
             m["pnate"] = round(m["pnate"], 2)
             m["saude"] = {k: round(v, 2) for k, v in m["saude"].items()}
             m["assist"] = {k: round(v, 2) for k, v in m["assist"].items()}
+            m["edu"] = {k: round(v, 2) for k, v in m["edu"].items()}
             for v in m["esc"].values():
                 v[1] = round(v[1], 2)
     for itens in sem_local.values():
@@ -813,7 +831,7 @@ def processar_mes(caminho_zip, siafi_ibge):
     return resumo
 
 
-VERSAO_CACHE = "v9"   # mudar este valor obriga o robô a reprocessar todos os meses
+VERSAO_CACHE = "v10"   # mudar este valor obriga o robô a reprocessar todos os meses
 
 
 def caminho_mensal(ano, mes):
@@ -885,7 +903,7 @@ def atualizar_pdde(ufs):
                     perdidos += 1
                     continue
                 achados += 1
-                m = mensal.setdefault(uf, {}).setdefault(destino[1], {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}})
+                m = mensal.setdefault(uf, {}).setdefault(destino[1], {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}, "edu": {}})
                 e = m["esc"].setdefault(cnpj, [nome, 0.0])
                 e[1] += valor
     log(f"PDDE: {achados} pagamentos sem município foram localizados pelo CNPJ; {perdidos} ficaram sem localização.")
@@ -894,7 +912,7 @@ def atualizar_pdde(ufs):
             if uf.startswith("_") or uf not in ufs:
                 continue
             for ibge, m in muns.items():
-                t = total.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}})
+                t = total.setdefault(uf, {}).setdefault(ibge, {"esc": {}, "pref": 0.0, "pnae": 0.0, "se": 0.0, "pnate": 0.0, "saude": {}, "assist": {}, "edu": {}})
                 t["pref"] += m["pref"]
                 t["pnae"] += m["pnae"]
                 t["se"] += m.get("se", 0.0)
@@ -903,6 +921,8 @@ def atualizar_pdde(ufs):
                     t["saude"][k] = t["saude"].get(k, 0.0) + v
                 for k, v in m.get("assist", {}).items():
                     t["assist"][k] = t["assist"].get(k, 0.0) + v
+                for k, v in m.get("edu", {}).items():
+                    t["edu"][k] = t["edu"].get(k, 0.0) + v
                 for cnpj, (nome, valor) in m["esc"].items():
                     e = t["esc"].setdefault(cnpj, [nome, 0.0])
                     e[1] += valor
@@ -925,6 +945,9 @@ def atualizar_pdde(ufs):
                 "saude": dict({k: round(v, 2) for k, v in t["saude"].items()},
                               total=round(sum(t["saude"].values()), 2)),
             }
+            outros_edu = sorted(([k, round(v, 2)] for k, v in t["edu"].items() if v > 0), key=lambda x: -x[1])
+            if outros_edu:
+                saida["municipios"][ibge]["educacao_outros"] = outros_edu
             if t["assist"]:
                 saida["municipios"][ibge]["assistencia"] = dict({k: round(v, 2) for k, v in t["assist"].items()},
                                                                 total=round(sum(t["assist"].values()), 2))
