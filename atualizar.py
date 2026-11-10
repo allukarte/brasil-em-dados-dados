@@ -655,6 +655,31 @@ def testar_tesouro_arquivo(municipios_por_uf):
                     if len(exemplos) < 10:
                         exemplos.append((uf, mun.get("nome"), k, a, b))
     log(f"Tesouro (teste): {iguais} valores iguais, {difs} diferentes. Exemplos: {exemplos}")
+    # Razão (dados atuais da consulta, jan-out) / (arquivo, jan-set) por tipo, em todas as cidades.
+    # Se os dois usam a mesma definição, a razão é quase a mesma em todas as cidades.
+    import statistics
+    for k in ("FPM", "FUNDEB", "ITR", "Royalties", "CIDE-Combustíveis"):
+        rz = []
+        for uf in sorted(municipios_por_uf):
+            for cod, mun in ler_arquivo(uf)["municipios"].items():
+                t, n = mun.get("transferencias"), resumo.get(cod)
+                if t and n and t["por_tipo"].get(k) and n["por_tipo"].get(k):
+                    rz.append(t["por_tipo"][k] / n["por_tipo"][k])
+        if rz:
+            rz.sort()
+            q = lambda f: round(rz[int(f * (len(rz) - 1))], 4)
+            log(f"Tesouro (teste): {k}: {len(rz)} cidades, razão p1={q(.01)} p10={q(.1)} mediana={q(.5)} p90={q(.9)} p99={q(.99)}")
+    # comparação com o ano anterior já gravada: a mesma conta refeita direto do arquivo
+    dif = tot = 0
+    for uf in sorted(municipios_por_uf):
+        for cod, mun in ler_arquivo(uf)["municipios"].items():
+            t = mun.get("transferencias") or {}
+            if t.get("ano_anterior"):
+                tot += 1
+                a = anterior_do_arquivo(t, cod, municipios_por_uf)
+                if not a or abs(a["total"] - t["ano_anterior"]["total"]) > 0.05:
+                    dif += 1
+    log(f"Tesouro (teste): comparação com o ano anterior conferida em {tot} cidades, {dif} diferenças.")
     m = resumo.get("3531100")
     log(f"Tesouro (teste): Mongaguá pelo arquivo: {json.dumps(m, ensure_ascii=False)}")
 
