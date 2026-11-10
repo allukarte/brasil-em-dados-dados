@@ -438,40 +438,172 @@ def recursos_tesouro_arquivo():
     return [r for r in res if isinstance(r, dict)]
 
 
-def testar_tesouro_arquivo():
-    """Só olha os arquivos recentes (não grava nada)."""
-    recursos = recursos_tesouro_arquivo()
-    log(f"Tesouro (arquivo): {len(recursos)} arquivos no conjunto de dados.")
-    tot = {}
+_ARQ_LINHAS = {}   # (ano) -> lista de linhas no formato da API: co_ibge, mes, transferencia, valor
+
+
+def _chave_nome(n):
+    return re.sub(r"[^a-z0-9]", "", normalizar(n))
+
+
+def linhas_tesouro_arquivo(ano, municipios_por_uf):
+    """Plano B: monta, a partir dos arquivos mensais do Tesouro Transparente, as mesmas linhas
+    que a API devolveria para o ano pedido. Cada arquivo traz um único mês; se houver dois
+    arquivos para o mesmo mês, vale o publicado por último."""
+    if ano in _ARQ_LINHAS:
+        return _ARQ_LINHAS[ano]
+    _ARQ_LINHAS[ano] = []
+    if "_recursos" not in _ARQ_LINHAS:
+        _ARQ_LINHAS["_recursos"] = recursos_tesouro_arquivo()
+    recursos = [r for r in _ARQ_LINHAS["_recursos"]
+                if re.search(rf"_({ano}\d\d|{ano + 1}01)\b", (r.get("name") or "").replace(".csv", ""))]
+    recursos.sort(key=lambda r: r.get("last_modified") or r.get("created") or "", reverse=True)
+    ids = {}
+    for uf, lista in municipios_por_uf.items():
+        for m in lista:
+            ids[(uf, _chave_nome(m["nome"]))] = m["id"]
+    meses_feitos, sem_id = set(), set()
     for r in recursos:
-        nome, url = r.get("name") or "", r.get("url") or ""
-        if not re.search(r"_(2025|2026)\d\d", nome):
-            continue
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "RepasseAberto/1.0"})
+            req = urllib.request.Request(r.get("url") or "", headers={"User-Agent": "RepasseAberto/1.0"})
             with urllib.request.urlopen(req, timeout=300) as resp:
                 bruto = resp.read()
-            try:
-                txt = bruto.decode("utf-8-sig")
-            except UnicodeDecodeError:
-                txt = bruto.decode("latin-1")
-            periodos, pares = {}, set()
-            for l in txt.splitlines()[1:]:
-                c = l.split(";")
-                if len(c) < 9:
-                    continue
-                periodos[(c[2], c[3])] = periodos.get((c[2], c[3]), 0) + 1
-                pares.add((c[8], c[7]))
-                if c[1] == "SP" and normalizar(c[0]) == "mongagua":
-                    v = sum(numero(x) for x in c[4:7])
-                    k = (c[2], c[3], c[8], c[7])
-                    tot[k] = tot.get(k, 0.0) + v
-            log(f"   {nome} ({r.get('last_modified')}): períodos {sorted(periodos.items())}")
-            log(f"      pares: {sorted(pares)}")
         except Exception as e:
-            log(f"   falha ao abrir {nome}: {e.__class__.__name__}: {e}")
-    for k in sorted(tot):
-        log(f"   MONGAGUA {k}: {tot[k]:.2f}")
+            log(f"Tesouro (arquivo): não consegui baixar {r.get('name')} ({e.__class__.__name__}).")
+            continue
+        try:
+            txt = bruto.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            txt = bruto.decode("latin-1")
+        linhas, mes_arq = [], None
+        for l in txt.splitlines()[1:]:
+            c = l.split(";")
+            if len(c) < 9 or not c[2].strip().isdigit() or not c[3].strip().isdigit():
+                continue
+            if int(c[2]) != ano:
+                continue
+            mes = int(c[3])
+            if mes in meses_feitos:
+                continue
+            mes_arq = mes
+            tipo, item = c[8].strip(), c[7].strip()
+            if item.upper() == "DEDU":   # parte da cidade retida para o Fundeb: não é dinheiro recebido
+                continue
+            if tipo.upper() == "FPM" and item.upper().startswith("FPM 1"):
+                tipo = "FPM 1%"
+            cod = ids.get((c[1].strip().upper(), _chave_nome(c[0])))
+            if not cod:
+                sem_id.add((c[1].strip(), c[0].strip()))
+                continue
+            valor = sum(numero(x) for x in c[4:7])
+            linhas.append({"co_ibge": cod, "ano": ano, "mes": mes, "transferencia": tipo, "valor": valor})
+        if mes_arq is not None:
+            meses = {x["mes"] for x in linhas}
+            meses_feitos |= meses
+            _ARQ_LINHAS[ano].extend(linhas)
+    if sem_id:
+        log(f"Tesouro (arquivo): {len(sem_id)} nomes de município não reconhecidos, ex.: {sorted(sem_id)[:5]}")
+    log(f"Tesouro (arquivo): {ano} — meses {sorted(meses_feitos)}, {len(_ARQ_LINHAS[ano])} linhas.")
+    return _ARQ_LINHAS[ano]
+
+
+def resumo_tesouro_arquivo(municipios_por_uf):
+    """Resumo por município do ano mais recente disponível nos arquivos, com o mesmo período
+    do ano anterior para comparação."""
+    if "_resumo" in _ARQ_LINHAS:
+        return _ARQ_LINHAS["_resumo"]
+    hoje = date.today()
+    resumo, ano = {}, hoje.year
+    for ano in (hoje.year, hoje.year - 1):
+        linhas = linhas_tesouro_arquivo(ano, municipios_por_uf)
+        if linhas:
+            resumo = resumir_tesouro(linhas, ano)
+            break
+    if resumo:
+        anterior = {}
+        for r in linhas_tesouro_arquivo(ano - 1, municipios_por_uf):
+            info = resumo.get(r["co_ibge"])
+            if not info or not info.get("mes_final") or r["mes"] > info["mes_final"]:
+                continue
+            a = anterior.setdefault(r["co_ibge"], {"ano": ano - 1, "fundeb": 0.0, "fpm": 0.0, "total": 0.0})
+            nome = r["transferencia"].upper()
+            a["total"] += r["valor"]
+            if "FUNDEB" in nome:
+                a["fundeb"] += r["valor"]
+            elif nome.startswith("FPM"):
+                a["fpm"] += r["valor"]
+        for cod, a in anterior.items():
+            resumo[cod]["ano_anterior"] = {k: (round(v, 2) if isinstance(v, float) else v) for k, v in a.items()}
+    _ARQ_LINHAS["_resumo"] = resumo
+    return resumo
+
+
+def anterior_do_arquivo(info, cod, municipios_por_uf):
+    """Calcula a comparação com o ano anterior para dados que vieram da API."""
+    ano, mes_final = info.get("ano"), info.get("mes_final")
+    if not ano or not mes_final:
+        return None
+    a = {"ano": ano - 1, "fundeb": 0.0, "fpm": 0.0, "total": 0.0}
+    achou = False
+    for r in linhas_tesouro_arquivo(ano - 1, municipios_por_uf):
+        if r["co_ibge"] != cod or r["mes"] > mes_final:
+            continue
+        achou = True
+        nome = r["transferencia"].upper()
+        a["total"] += r["valor"]
+        if "FUNDEB" in nome:
+            a["fundeb"] += r["valor"]
+        elif nome.startswith("FPM"):
+            a["fpm"] += r["valor"]
+    return {k: (round(v, 2) if isinstance(v, float) else v) for k, v in a.items()} if achou else None
+
+
+def usar_tesouro_arquivo(uf, municipios, dados, municipios_por_uf):
+    """Plano B quando a API do Tesouro não responde. Só troca o que já existe se o arquivo
+    tiver um período mais recente; nunca apaga nem volta para trás."""
+    resumo = resumo_tesouro_arquivo(municipios_por_uf)
+    ids = {m["id"] for m in municipios}
+    trocados = comparacoes = 0
+    for cod in ids:
+        mun = dados["municipios"].setdefault(cod, {})
+        atual, novo = mun.get("transferencias"), resumo.get(cod)
+        if novo and (not atual or (novo["ano"], novo["mes_final"] or 0) > (atual.get("ano") or 0, atual.get("mes_final") or 0)):
+            mun["transferencias"] = novo
+            trocados += 1
+            atual = novo
+        if atual and not atual.get("ano_anterior"):
+            a = anterior_do_arquivo(atual, cod, municipios_por_uf)
+            if a:
+                atual["ano_anterior"] = a
+                comparacoes += 1
+    log(f"Tesouro (arquivo): {uf} — {trocados} municípios com período mais novo, "
+        f"{comparacoes} com comparação do ano anterior acrescentada.")
+
+
+def testar_tesouro_arquivo(municipios_por_uf):
+    """Confere o plano B sem gravar nada: compara com os dados atuais nos itens que não
+    dependem do último mês (FPM 1% e ajuste do Fundeb)."""
+    resumo = resumo_tesouro_arquivo(municipios_por_uf)
+    iguais = difs = 0
+    exemplos = []
+    for uf in sorted(municipios_por_uf):
+        dados = ler_arquivo(uf)
+        for cod, mun in dados["municipios"].items():
+            t, n = mun.get("transferencias"), resumo.get(cod)
+            if not t or not n:
+                continue
+            for k in ("FPM 1%", "AJUSTE FUNDEB"):
+                a, b = t["por_tipo"].get(k), n["por_tipo"].get(k)
+                if a is None and b is None:
+                    continue
+                if a is not None and b is not None and abs(a - b) < 0.05:
+                    iguais += 1
+                else:
+                    difs += 1
+                    if len(exemplos) < 10:
+                        exemplos.append((uf, mun.get("nome"), k, a, b))
+    log(f"Tesouro (teste): {iguais} valores iguais, {difs} diferentes. Exemplos: {exemplos}")
+    m = resumo.get("3531100")
+    log(f"Tesouro (teste): Mongaguá pelo arquivo: {json.dumps(m, ensure_ascii=False)}")
 
 # ----------------------------------------------------------------- Portal da Transparência
 
@@ -1722,7 +1854,7 @@ def main():
         log("Concluído.")
         return
     if fontes == "tesouro_teste":
-        testar_tesouro_arquivo()
+        testar_tesouro_arquivo(municipios_ibge())
         log("Concluído.")
         return
     if fontes == "estaduais":
