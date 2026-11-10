@@ -461,6 +461,12 @@ def _chave_nome(n):
     return re.sub(r"[^a-z0-9]", "", normalizar(n))
 
 
+# Cidades que mudaram de nome e ainda aparecem com o nome antigo nos arquivos do Tesouro
+NOMES_ANTIGOS = {
+    ("RN", "Presidente Juscelino"): "Serra Caiada",
+    ("TO", "Tabocão"): "Fortaleza do Tabocão",
+    ("PI", "Pau D'Arco"): "Pau D'Arco do Piauí",
+}
 _PARECIDOS = {}
 
 
@@ -491,6 +497,15 @@ def linhas_tesouro_arquivo(ano, municipios_por_uf):
     for uf, lista in municipios_por_uf.items():
         for m in lista:
             ids[(uf, _chave_nome(m["nome"]))] = m["id"]
+            # "Januário Cicco (Boa Saúde)": aceita também cada um dos dois nomes
+            p = re.match(r"^(.*?)\s*\((.*)\)\s*$", m["nome"])
+            if p:
+                ids.setdefault((uf, _chave_nome(p.group(1))), m["id"])
+                ids.setdefault((uf, _chave_nome(p.group(2))), m["id"])
+    for (uf, antigo), atual in NOMES_ANTIGOS.items():
+        cod = ids.get((uf, _chave_nome(atual)))
+        if cod:
+            ids.setdefault((uf, _chave_nome(antigo)), cod)
     meses_feitos, sem_id = set(), set()
     for r in recursos:
         try:
