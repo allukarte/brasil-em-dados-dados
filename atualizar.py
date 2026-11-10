@@ -361,11 +361,13 @@ def resumir_tesouro(linhas, ano):
 
 
 _NACIONAL = {}
+_NACIONAL_TENTADO = []
 
 
 def resumo_nacional():
     """Plano B: se os códigos de estado não forem encontrados, baixa o país inteiro de uma vez."""
-    if not _NACIONAL:
+    if not _NACIONAL and not _NACIONAL_TENTADO:
+        _NACIONAL_TENTADO.append(True)
         hoje = date.today()
         for ano in (hoje.year, hoje.year - 1):
             linhas = tesouro_registros({"p_ano": ano})
@@ -375,7 +377,7 @@ def resumo_nacional():
     return _NACIONAL
 
 
-def atualizar_tesouro(uf, municipios, dados, codigos):
+def atualizar_tesouro(uf, municipios, dados, codigos, municipios_por_uf=None):
     hoje = date.today()
     cod_uf = codigos.get(uf)
     resumo = {}
@@ -389,7 +391,12 @@ def atualizar_tesouro(uf, municipios, dados, codigos):
                 resumo = resumir_tesouro(linhas, ano)
                 break
     if not resumo:
-        log(f"Tesouro: nenhuma transferência encontrada para {uf}.")
+        log(f"Tesouro: nenhuma transferência encontrada para {uf} na consulta; usando os arquivos do Tesouro Transparente.")
+        if municipios_por_uf:
+            try:
+                usar_tesouro_arquivo(uf, municipios, dados, municipios_por_uf)
+            except Exception as e:
+                log(f"Tesouro (arquivo): erro inesperado ({e.__class__.__name__}: {e}). Os dados antigos foram mantidos.")
         return
     # Mesmo período do ano anterior, para comparar (ex.: jan–out/2025 com jan–out/2026)
     anterior = {}
@@ -414,6 +421,15 @@ def atualizar_tesouro(uf, municipios, dados, codigos):
             log(f"Tesouro: não consegui buscar o ano anterior de {uf} ({e.__class__.__name__}).")
     for cod, a in anterior.items():
         resumo[cod]["ano_anterior"] = {k: (round(v, 2) if isinstance(v, float) else v) for k, v in a.items()}
+    if municipios_por_uf:
+        try:
+            for cod, info in resumo.items():
+                if not info.get("ano_anterior"):
+                    a = anterior_do_arquivo(info, cod if len(cod) == 7 else None, municipios_por_uf)
+                    if a:
+                        info["ano_anterior"] = a
+        except Exception as e:
+            log(f"Tesouro (arquivo): não consegui montar a comparação de {uf} ({e.__class__.__name__}).")
     # O Tesouro pode usar o código IBGE com 6 ou 7 dígitos; os dois são aceitos.
     por6 = {m["id"][:6]: m["id"] for m in municipios}
     ids = {m["id"] for m in municipios}
@@ -443,6 +459,20 @@ _ARQ_LINHAS = {}   # (ano) -> lista de linhas no formato da API: co_ibge, mes, t
 
 def _chave_nome(n):
     return re.sub(r"[^a-z0-9]", "", normalizar(n))
+
+
+_PARECIDOS = {}
+
+
+def _nome_parecido(uf, nome, ids):
+    """Grafias antigas (ex.: Itapagé/Itapajé): procura o nome mais parecido no mesmo estado."""
+    import difflib
+    k = (uf, _chave_nome(nome))
+    if k not in _PARECIDOS:
+        opcoes = {n: cod for (u, n), cod in ids.items() if u == uf}
+        achado = difflib.get_close_matches(k[1], list(opcoes), n=1, cutoff=0.8)
+        _PARECIDOS[k] = opcoes[achado[0]] if achado else None
+    return _PARECIDOS[k]
 
 
 def linhas_tesouro_arquivo(ano, municipios_por_uf):
@@ -491,6 +521,8 @@ def linhas_tesouro_arquivo(ano, municipios_por_uf):
             if tipo.upper() == "FPM" and item.upper().startswith("FPM 1"):
                 tipo = "FPM 1%"
             cod = ids.get((c[1].strip().upper(), _chave_nome(c[0])))
+            if not cod:
+                cod = _nome_parecido(c[1].strip().upper(), c[0], ids)
             if not cod:
                 sem_id.add((c[1].strip(), c[0].strip()))
                 continue
@@ -544,8 +576,14 @@ def anterior_do_arquivo(info, cod, municipios_por_uf):
         return None
     a = {"ano": ano - 1, "fundeb": 0.0, "fpm": 0.0, "total": 0.0}
     achou = False
-    for r in linhas_tesouro_arquivo(ano - 1, municipios_por_uf):
-        if r["co_ibge"] != cod or r["mes"] > mes_final:
+    chave = ("_idx", ano - 1)
+    if chave not in _ARQ_LINHAS:
+        idx = {}
+        for r in linhas_tesouro_arquivo(ano - 1, municipios_por_uf):
+            idx.setdefault(r["co_ibge"], []).append(r)
+        _ARQ_LINHAS[chave] = idx
+    for r in _ARQ_LINHAS[chave].get(cod, []):
+        if r["mes"] > mes_final:
             continue
         achou = True
         nome = r["transferencia"].upper()
@@ -1890,7 +1928,7 @@ def main():
         for m in lista:
             dados["municipios"].setdefault(m["id"], {})["nome"] = m["nome"]
         if usar_tesouro:
-            atualizar_tesouro(uf, lista, dados, codigos)
+            atualizar_tesouro(uf, lista, dados, codigos, municipios)
             gravar_arquivo(uf, dados)
         if referencias:
             atualizar_portal(uf, lista, dados, chave, referencias)
