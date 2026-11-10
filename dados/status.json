@@ -1,7 +1,33 @@
 {
- "ultima_execucao": "2026-11-10T18:02:07-03:00",
+ "ultima_execucao": "2026-11-10T18:11:43-03:00",
  "estados": [
-  "SP"
+  "AC",
+  "AL",
+  "AM",
+  "AP",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MG",
+  "MS",
+  "MT",
+  "PA",
+  "PB",
+  "PE",
+  "PI",
+  "PR",
+  "RJ",
+  "RN",
+  "RO",
+  "RR",
+  "RS",
+  "SC",
+  "SE",
+  "SP",
+  "TO"
  ],
  "fontes": "tesouro"
 }
