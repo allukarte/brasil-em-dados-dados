@@ -23,6 +23,7 @@ on:
           - fundeb
           - convenios
           - estaduais
+          - tesouro_teste
 
 permissions:
   contents: write

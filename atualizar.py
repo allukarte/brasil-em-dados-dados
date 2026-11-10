@@ -426,6 +426,55 @@ def atualizar_tesouro(uf, municipios, dados, codigos):
     log(f"Tesouro: {uf} — transferências de {ligados} municípios (ano {next(iter(resumo.values()))['ano']}).")
 
 
+# ----------------------------------------------------------------- Tesouro: plano B (arquivo do Tesouro Transparente)
+
+CKAN_TT = "https://www.tesourotransparente.gov.br/ckan/api/3/action/package_show?id="
+DATASET_TRANSF_MUN = "af4e7c47-2132-4d9a-bd7c-34e28a210b03"
+
+
+def recursos_tesouro_arquivo():
+    resp = baixar_json(CKAN_TT + DATASET_TRANSF_MUN)
+    res = (resp or {}).get("result", {}).get("resources", []) if isinstance(resp, dict) else []
+    return [r for r in res if isinstance(r, dict)]
+
+
+def testar_tesouro_arquivo():
+    """Só olha o arquivo (não grava nada): lista os arquivos e mostra o começo de cada um."""
+    recursos = recursos_tesouro_arquivo()
+    log(f"Tesouro (arquivo): {len(recursos)} arquivos no conjunto de dados.")
+    for r in recursos:
+        log(f"   - {r.get('name')} | {r.get('format')} | {r.get('size')} | {r.get('last_modified') or r.get('created')} | {r.get('url')}")
+    for r in recursos:
+        url = r.get("url") or ""
+        if not re.search(r"\.(csv|zip|txt)(\?|$)", url, re.I):
+            continue
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "RepasseAberto/1.0"})
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                log(f"   >> {url} — tamanho {resp.headers.get('Content-Length')} — tipo {resp.headers.get('Content-Type')}")
+                ini = resp.read(300000)
+            if url.lower().endswith(".zip"):
+                log("   (zip: só o tamanho)")
+                continue
+            for enc in ("utf-8-sig", "latin-1"):
+                try:
+                    txt = ini.decode(enc)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            linhas = txt.splitlines()
+            for l in linhas[:8]:
+                log("      " + l[:300])
+            tipos = {}
+            for l in linhas[1:-1]:
+                c = l.split(";")
+                if len(c) >= 9:
+                    tipos[(c[-1], c[-2])] = tipos.get((c[-1], c[-2]), 0) + 1
+            log(f"      tipos no começo: {sorted(tipos)[:60]}")
+        except Exception as e:
+            log(f"   falha ao abrir {url}: {e.__class__.__name__}: {e}")
+
+
 # ----------------------------------------------------------------- Portal da Transparência
 
 def consultar_programa(caminho, codigo_ibge, mes_ano, chave):
@@ -1672,6 +1721,10 @@ def main():
         return
     if fontes == "convenios":
         atualizar_convenios(ufs)
+        log("Concluído.")
+        return
+    if fontes == "tesouro_teste":
+        testar_tesouro_arquivo()
         log("Concluído.")
         return
     if fontes == "estaduais":
