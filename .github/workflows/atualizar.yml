@@ -2,8 +2,13 @@ name: Atualizar dados
 
 on:
   schedule:
-    # Toda segunda-feira às 03:17 (horário de Brasília) = 06:17 UTC
+    # Toda segunda-feira às 03:17 (horário de Brasília) = 06:17 UTC.
+    # O GitHub às vezes atrasa ou pula o horário agendado; por isso há mais duas
+    # tentativas de reserva no mesmo dia (10:47 e 16:47 de Brasília). Rodar de novo
+    # não estraga nada: o robô só regrava os mesmos dados ou dados mais novos.
     - cron: "17 6 * * 1"
+    - cron: "47 13 * * 1"
+    - cron: "47 19 * * 1"
   workflow_dispatch:
     inputs:
       ufs:
