@@ -698,6 +698,11 @@ def usar_tesouro_arquivo(uf, municipios, dados, municipios_por_uf):
             mun["transferencias"] = novo
             trocados += 1
             atual = novo
+        if atual and "mensal" not in atual:
+            # formato antigo: o último mês foi buscado antes de fechar e não dá para conferir
+            atual["ultimo_mes_incompleto"] = True
+        elif atual:
+            atual.pop("ultimo_mes_incompleto", None)
         if atual and not atual.get("ano_anterior"):
             a = anterior_do_arquivo(atual, cod, municipios_por_uf)
             if a:
