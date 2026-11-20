@@ -1,5 +1,5 @@
 {
- "ultima_execucao": "2026-11-17T00:07:44-03:00",
+ "ultima_execucao": "2026-11-20T17:45:15-03:00",
  "estados": [
   "AC",
   "AL",
@@ -29,5 +29,5 @@
   "SP",
   "TO"
  ],
- "fontes": "todas"
+ "fontes": "tesouro"
 }
