@@ -144,7 +144,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
 #bd .bd-grupo-cab{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;margin-bottom:8px;background:var(--c);border-radius:10px;padding:10px 16px}
 #bd .bd-grupo-cab i{width:10px;height:10px;border-radius:50%;display:inline-block;background:rgba(255,255,255,.85)}
 #bd .bd-grupo-cab h3{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.2px;color:#fff;margin:0}
-#bd .bd-grupo-cab span{margin-left:auto;font-size:14px;color:rgba(255,255,255,.9);white-space:nowrap}
+#bd .bd-grupo-cab span{margin-left:auto;font-size:14px;color:rgba(255,255,255,.9);white-space:normal;max-width:100%;text-align:right}
 #bd .bd-linhas{margin:0;padding:0}
 #bd .bd-linha{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:9px 0;border-bottom:1px dashed var(--linha)}
 #bd .bd-linha dt{color:var(--tinta-2);min-width:150px}
@@ -164,6 +164,14 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
 #bd .bd-escolas li{display:flex;justify-content:space-between;gap:12px;padding:7px 4px;font-size:14.5px;border-bottom:1px solid var(--linha-2)}
 #bd .bd-escolas li span{color:var(--tinta)}
 #bd .bd-escolas li b{font-variant-numeric:tabular-nums;white-space:nowrap}
+#bd .bd-extrato-grade>*{min-width:0}
+#bd .bd-tab-wrap{overflow-x:auto;max-width:100%;margin:6px 0 10px;-webkit-overflow-scrolling:touch}
+#bd table.bd-tab{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+#bd table.bd-tab th,#bd table.bd-tab td{padding:6px 8px;border-bottom:1px solid var(--linha,#DCE3EF);text-align:right;white-space:nowrap}
+#bd table.bd-tab th:first-child{text-align:left}
+#bd table.bd-tab thead th{font-weight:700;color:var(--tinta-2);font-size:12.5px;vertical-align:bottom;white-space:normal}
+#bd table.bd-tab tbody th{font-weight:600}
+#bd table.bd-tab tr.bd-tab-tot th,#bd table.bd-tab tr.bd-tab-tot td{font-weight:700;border-top:2px solid var(--linha,#DCE3EF)}
 #bd .bd-escolas li span small{display:block;font-size:12.5px;line-height:1.45;color:var(--tinta-2);margin-top:2px}
 #bd .bd-mais p{font-size:14.5px;color:var(--tinta-2);margin:4px 0 8px}
 #bd .bd-mais .bd-det-tit{margin:12px 0 2px;color:var(--tinta)}
@@ -802,6 +810,27 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
     if (j.length < 2) return "";
     return '<details class="bd-escolas bd-mais"><summary>' + resumo + "</summary>" + j.map(itemPlano).join("") + "</details>";
   }
+  // Mês a mês: colunas = [[rótulo, valores a partir de janeiro, último mês publicado]]
+  var fmtVal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function tabelaMeses(ano, colunas, nota) {
+    colunas = colunas.filter(function (c) { return c[1] && c[1].some(function (v) { return v; }); });
+    if (!colunas.length || !ano) return "";
+    var n = Math.max.apply(null, colunas.map(function (c) { return c[1].length; })), algumFalta = false;
+    var h = '<details class="bd-escolas bd-mais bd-meses"><summary>Ver mês a mês</summary><div class="bd-tab-wrap"><table class="bd-tab"><thead><tr><th>Mês</th>' +
+      colunas.map(function (c) { return "<th>" + c[0] + "</th>"; }).join("") + "</tr></thead><tbody>";
+    for (var i = 0; i < n; i++) {
+      h += "<tr><th>" + MES3[i] + "/" + ano + "</th>" + colunas.map(function (c) {
+        if (i >= c[1].length) { algumFalta = true; return '<td title="mês ainda não publicado completo">…</td>'; }
+        return "<td>" + (c[1][i] ? fmtVal.format(c[1][i]) : "\u2014") + "</td>";
+      }).join("") + "</tr>";
+    }
+    h += '<tr class="bd-tab-tot"><th>Total</th>' + colunas.map(function (c) {
+      return "<td>" + fmtVal.format(c[1].reduce(function (a, v) { return a + (v || 0); }, 0)) + "</td>";
+    }).join("") + "</tr></tbody></table></div>";
+    return h + "<p>Valores em reais, pelo mês em que o dinheiro foi pago. \u2014 quer dizer que não houve repasse no mês" +
+      (algumFalta ? "; \u2026 quer dizer que a fonte ainda não publicou aquele mês completo" : "") + "." + (nota ? " " + nota : "") + "</p></details>";
+  }
+  function somaAte(v, k) { var s = 0; for (var i = 0; i < Math.min(k, (v || []).length); i++) s += v[i] || 0; return s; }
   function linhaRepasse(rotulo, v, sub) {
     if (!v) return '<div class="bd-linha"><dt>' + rotulo + '</dt><dd class="bd-sem">Nenhum repasse no período</dd></div>';
     return linha(rotulo, moeda(v), sub);
@@ -897,6 +926,18 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
         } else if (n.tagName === "DETAILS") {
           var sum = textoLimpo(n.querySelector("summary"));
           if (/^(Entenda|Como o total)/.test(sum)) return;
+          var tab = n.querySelector("table.bd-tab");
+          if (tab) {
+            var cab = [].map.call(tab.querySelectorAll("thead th"), textoLimpo);
+            [].forEach.call(tab.querySelectorAll("tbody tr"), function (tr) {
+              var mesTxt = textoLimpo(tr.querySelector("th"));
+              [].forEach.call(tr.querySelectorAll("td"), function (td, ci) {
+                var v = textoLimpo(td);
+                L.push([bloco, mesTxt, cab[ci + 1], /^-?[\d.]+,\d{2}$/.test(v) ? v.replace(/\./g, "") : (v === "\u2014" ? "0" : ""), v === "\u2026" ? "mês ainda não publicado completo" : "", "Mês a mês"]);
+              });
+            });
+            return;
+          }
           [].forEach.call(n.querySelectorAll("li"), function (li) {
             var x = semSmall(li), c = x[0], sp = c.querySelector("span"), b = c.querySelector("b");
             var nome = textoLimpo(sp || b), val = sp && b ? valorCSV(textoLimpo(b)) : valorCSV(x[1]);
@@ -1172,6 +1213,12 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
     d = d || {};
     var t = d.transferencias, bf = d.bolsa_familia, bpc = d.bpc;
     var capital = normalizar(m.nome) === normalizar(e.capital);
+    // Último mês do Tesouro buscado antes de fechar (falta parcela): avisa e não compara com o ano anterior
+    var inc = !!(t && t.ultimo_mes_incompleto && t.mes_final), mesInc = inc ? MESES[t.mes_final - 1] : "";
+    var perT = t ? periodo(t) + (inc ? " (" + mesInc + " incompleto)" : "") : "";
+    var notaInc = inc ? '<p class="bd-nota-esc" style="margin:6px 0 12px">' + mesInc.charAt(0).toUpperCase() + mesInc.slice(1) +
+      " ainda está incompleto nos repasses do Tesouro: o FPM e o Fundeb são pagos em três parcelas por mês, e a última de " + mesInc +
+      " ainda não pôde ser buscada. Por isso a comparação com o ano anterior fica escondida até o mês fechar.</p>" : "";
 
     var selo = oficial
       ? '<span class="bd-selo bd-selo-ok">Dados oficiais</span>'
@@ -1197,7 +1244,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
     } else if (t && t.total && t.fundeb) {
       subF = Math.round(t.fundeb / t.total * 100) + "% das transferências do período";
     }
-    if (ant && ant.fundeb && t && t.fundeb) subF += (subF ? "<br>" : "") + variacao(t.fundeb, ant.fundeb, ant.ano);
+    if (ant && ant.fundeb && t && t.fundeb && !inc) subF += (subF ? "<br>" : "") + variacao(t.fundeb, ant.fundeb, ant.ano);
     var le = linha("Fundeb recebido", t && t.fundeb ? moeda(t.fundeb) : null, subF);
     if (t && t.fundeb) {
       var mais = "";
@@ -1269,7 +1316,13 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
     } else {
       le += linha("Dinheiro Direto na Escola (PDDE)", null) + linha("Merenda escolar (PNAE)", null) + linha("Salário-Educação", null);
     }
-    h += grupo(REGIOES.N.cor, "Educação", t ? periodo(t) : (pUF ? periodo(pUF) : ""), le);
+    var tm = (t && t.mensal) || {}, pm = (p && p.mensal) || {};
+    le += tabelaMeses((t && t.ano) || (pUF && pUF.ano), [["Fundeb", tm.fundeb], ["PDDE", pm.pdde], ["Merenda", pm.pnae], ["Salário-Educação", pm.se],
+      ["Transporte escolar", pm.pnate], ["Outros programas do MEC e do FNDE", pm.edu]],
+      "O PDDE costuma ser pago em poucas parcelas no ano, e a merenda em 10 parcelas, de fevereiro a novembro.");
+    var perEdu = t ? perT : (pUF ? periodo(pUF) : "");
+    if (t && pUF && p && (inc || periodo(t) !== periodo(pUF))) perEdu = "Fundeb " + perT + " \u00b7 programas " + periodo(pUF);
+    h += grupo(REGIOES.N.cor, "Educação", perEdu, le);
 
     // Saúde
     if (p && p.saude) {
@@ -1283,6 +1336,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
         "<p>Dinheiro do SUS que o Ministério da Saúde enviou ao <b>Fundo Municipal de Saúde</b>. A prefeitura usa para manter postos, pagar equipes e contratar atendimentos.</p>" +
         (sa.enfermagem ? "<p><b>Piso da enfermagem:</b> desde 2022 a lei garante um salário mínimo nacional para enfermeiros, técnicos, auxiliares de enfermagem e parteiras. Como muitas prefeituras e hospitais filantrópicos não conseguiam pagar, a União manda todo mês um complemento. A prefeitura usa para pagar a própria equipe e repassa a parte dos hospitais filantrópicos da cidade.</p>" : "") +
         "<p>Não entra aqui o que o governo do estado gasta na cidade, nem hospitais e serviços pagos direto pelo governo federal.</p></details>";
+      ls += tabelaMeses(pUF && pUF.ano, [["Saúde", ((p && p.mensal) || {}).saude]]);
       ls += linha("Total da saúde", moeda(sa.total), "", true);
       h += grupo(REGIOES.S.cor, "Saúde", pUF ? periodo(pUF) : "", ls);
     }
@@ -1298,6 +1352,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
         "<p>Dinheiro que o Fundo Nacional de Assistência Social enviou ao <b>Fundo Municipal de Assistência Social</b>. A prefeitura usa para manter o CRAS e o CREAS, pagar as equipes e atender famílias em situação de vulnerabilidade.</p>" +
         "<p><b>Proteção Social Básica:</b> prevenção, no CRAS e nos serviços de convivência para crianças, jovens e idosos. <b>Proteção Social Especial:</b> casos de direitos violados, no CREAS, na abordagem de pessoas em situação de rua e no acolhimento. <b>Gestão:</b> o IGD, que paga o trabalho de manter o Cadastro Único e acompanhar as famílias do Bolsa Família.</p>" +
         "<p>Não entram aqui os benefícios pagos direto às famílias, como o Bolsa Família e o BPC. Eles aparecem em Programas sociais.</p></details>";
+      la += tabelaMeses(pUF && pUF.ano, [["Assistência social", ((p && p.mensal) || {}).assist]]);
       la += linha("Total da assistência social", moeda(asx.total), "", true);
       h += grupo("#0E8FA3", "Assistência social", pUF ? periodo(pUF) : "", la);
     }
@@ -1314,18 +1369,23 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
         "IOF-Ouro": ["IOF-Ouro", "Imposto sobre o ouro vendido como investimento. A maior parte (70%) vai para a cidade onde o ouro foi extraído."]
       };
       var usados = ["FPM"];
-      lt += linha(EXPL.FPM[0], moeda(t.fpm), ant && ant.fpm ? variacao(t.fpm, ant.fpm, ant.ano) : "");
+      lt += notaInc + linha(EXPL.FPM[0], moeda(t.fpm), ant && ant.fpm && !inc ? variacao(t.fpm, ant.fpm, ant.ano) : "");
       var tipos = t.por_tipo || {};
       Object.keys(tipos).filter(function (k) { var K = k.toUpperCase(); return K.indexOf("FUNDEB") === -1 && K.indexOf("FPM") !== 0 && tipos[k] > 0; })
         .slice(0, 6).forEach(function (k) { lt += linha(EXPL[k] ? EXPL[k][0] : escapar(k), moeda(tipos[k])); if (EXPL[k]) usados.push(k); });
       lt += '<details class="bd-escolas bd-mais"><summary>Entenda cada repasse</summary>' + usados.map(function (k) {
         return "<p><b>" + EXPL[k][0] + ":</b> " + EXPL[k][1] + "</p>";
       }).join("") + "<p>O Fundeb não aparece aqui porque já está no bloco de Educação.</p></details>";
-      lt += linha("Total das transferências constitucionais", moeda(t.total), "inclui o Fundeb" + (ant && ant.total ? " \u00b7 " + variacao(t.total, ant.total, ant.ano) : ""), true);
+      if (t.mensal) {
+        var outrasM = (t.mensal.total || []).map(function (v, i) { return Math.round((v - (t.mensal.fundeb[i] || 0) - (t.mensal.fpm[i] || 0)) * 100) / 100; });
+        lt += tabelaMeses(t.ano, [["FPM", t.mensal.fpm], ["Fundeb", t.mensal.fundeb], ["Royalties, ITR, CIDE e outras", outrasM], ["Total", t.mensal.total]],
+          "O Tesouro paga em três parcelas por mês (dias 10, 20 e 30); por isso um mês só aparece aqui depois de completo.");
+      }
+      lt += linha("Total das transferências constitucionais", moeda(t.total), "inclui o Fundeb" + (ant && ant.total && !inc ? " \u00b7 " + variacao(t.total, ant.total, ant.ano) : ""), true);
     } else {
       lt = linha("FPM (Fundo de Participação dos Municípios)", null) + linha("Demais transferências constitucionais", null);
     }
-    h += grupo(REGIOES.SE.cor, "Transferências da União", t ? periodo(t) : "", lt);
+    h += grupo(REGIOES.SE.cor, "Transferências da União", perT, lt);
 
     // Convênios e obras federais
     if (cUF) {
@@ -1364,9 +1424,9 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
     if (t) h += '<details class="bd-escolas bd-mais bd-calc"><summary>Como o total recebido é calculado</summary>' +
       "<p><b>Entra no total:</b> Fundeb, PDDE (inclusive o que vai direto para as escolas), merenda, Salário-Educação, transporte escolar e outros programas do MEC e do FNDE (Educação); o dinheiro do SUS enviado ao fundo municipal de saúde (Saúde); o dinheiro do fundo nacional enviado ao fundo municipal de assistência social (Assistência social); e FPM, royalties, ITR, CIDE e demais transferências da União.</p>" +
       "<p><b>Não entra:</b> convênios e obras federais, que são pagos aos poucos e aparecem no bloco próprio; Bolsa Família e BPC, pagos direto aos moradores; pagamentos que a União faz direto a hospitais filantrópicos e outras entidades de saúde e assistência; e os repasses do governo do estado, que estão no extrato Estaduais.</p>" +
-      "<p>Tudo o que entra no total usa o mesmo período: de janeiro até o último mês completo publicado.</p></details>";
+      "<p>Tudo o que entra no total usa o mesmo período: de janeiro até o último mês que todas as fontes já publicaram completo. Quando uma fonte está um mês à frente, esse mês aparece no bloco dela, mas fica fora do total até as outras publicarem.</p></details>";
     h += situacao([
-      ["Fundeb, FPM e demais transferências da União", "Tesouro Nacional", t ? periodo(t) : "", dUF ? dataDia(dUF.atualizado_em) : ""],
+      ["Fundeb, FPM e demais transferências da União", "Tesouro Nacional", perT, dUF ? dataDia(dUF.atualizado_em) : ""],
       ["PDDE, merenda, Salário-Educação, transporte escolar, saúde e assistência social", "Portal da Transparência", pUF ? periodo(pUF) : "", pUF ? dataDia(pUF.atualizado_em) : ""],
       ["Bolsa Família e BPC", "Portal da Transparência", mesP ? mesRef(mesP) : "", dUF ? dataDia(dUF.atualizado_em) : ""],
       ["Alunos da rede municipal (base do Fundeb)", "FNDE", f && fUF && fUF.ano ? "matrículas usadas no Fundeb de " + fUF.ano : "", fUF ? dataDia(fUF.atualizado_em) : ""],
@@ -1386,10 +1446,19 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
       var sau = p && p.saude ? p.saude.total || 0 : 0;
       var ass = p && p.assistencia ? p.assistencia.total || 0 : 0;
       var outras = Math.max(0, (t.total || 0) - (t.fundeb || 0));
+      var perTot = periodo(t), cortado = false;
+      // Quando as fontes estão em meses diferentes, o total usa só os meses que todas já publicaram.
+      if (p && pUF && p.mensal && t.mensal && pUF.ano === t.ano && (pUF.mes_inicial || 1) === 1 && (pUF.mes_final || 0) !== (t.mes_final || 0)) {
+        var k = Math.min(pUF.mes_final || 0, t.mes_final || 0), pm2 = p.mensal, tm2 = t.mensal;
+        edu = somaAte(tm2.fundeb, k) + somaAte(pm2.pdde, k) + somaAte(pm2.pnae, k) + somaAte(pm2.se, k) + somaAte(pm2.pnate, k) + somaAte(pm2.edu, k);
+        sau = somaAte(pm2.saude, k); ass = somaAte(pm2.assist, k);
+        outras = Math.max(0, somaAte(tm2.total, k) - somaAte(tm2.fundeb, k));
+        perTot = periodo({ ano: t.ano, mes_inicial: 1, mes_final: k }); cortado = true;
+      }
       var tot = edu + sau + ass + outras;
       var partes = [["Educação", edu, "#1F9D6B"], ["Saúde", sau, "#D8504D"], ["Assistência social", ass, "#0E8FA3"], ["Demais transferências", outras, "#3C82F0"]]
         .filter(function (x) { return x[1] > 0; });
-      r += "<h3>Total recebido em " + periodo(t) + '</h3><p class="bd-resumo-valor">' + curto(tot) + "</p>";
+      r += "<h3>Total recebido em " + perTot + '</h3><p class="bd-resumo-valor">' + curto(tot) + "</p>";
       r += '<p class="bd-resumo-sub">' + moeda(tot) + "</p>";
       r += '<div class="bd-barra" role="img" aria-label="Divisão do total entre educação, saúde, assistência social e demais transferências">' + partes.map(function (x) {
         return '<span style="width:' + (tot ? x[1] / tot * 100 : 0).toFixed(2) + "%;background:" + x[2] + '"></span>';
@@ -1397,6 +1466,8 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
       r += '<ul class="bd-barra-leg">' + partes.map(function (x) {
         return '<li><i style="background:' + x[2] + '"></i>' + x[0] + "<b>" + pct(x[1], tot) + "</b></li>";
       }).join("") + "</ul>";
+      if (inc) r += '<p class="bd-resumo-nota">Os repasses do Tesouro (Fundeb, FPM e demais) de ' + mesInc + " ainda estão incompletos. O total vai subir quando o mês fechar.</p>";
+      if (cortado) r += '<p class="bd-resumo-nota">O total usa ' + perTot + ", os meses que todas as fontes já publicaram. Alguns blocos do extrato já mostram um mês a mais.</p>";
       if (bf || bpc) {
         var soma = (bf ? bf.valor : 0) + (bpc ? bpc.valor : 0);
         r += '<p class="bd-resumo-nota">Em ' + mesRef(mesP) + ", Bolsa Família e BPC somaram <b style=\"color:#fff\">" + curto(soma) + "</b>, pagos direto aos moradores. Esse valor não entra no total acima.</p>";
@@ -1404,7 +1475,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
       if (cv && cv.qtd) {
         r += '<p class="bd-resumo-nota">Os convênios e obras federais não estão somados neste total, porque são pagos aos poucos, ao longo de vários anos. Eles aparecem no bloco próprio, no extrato.</p>';
       }
-      if (m.id) r += botoesAcoes(m, e, periodo(t), "quanto dinheiro público chegou a");
+      if (m.id) r += botoesAcoes(m, e, perTot, "quanto dinheiro público chegou a");
     } else {
       r += "<h3>Resumo</h3>" + '<p class="bd-resumo-valor" style="font-size:28px">Sem valores para mostrar</p>' +
         '<p class="bd-resumo-nota">' + (DADOS_CONFIGURADOS ? "Os dados deste município ainda não foram publicados. Volte depois da próxima atualização semanal." : "Os dados oficiais ainda não foram conectados a esta página.") + "</p>";
