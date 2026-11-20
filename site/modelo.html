@@ -845,17 +845,106 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(l).then(ok, function () { prompt("Copie o link:", l); });
       else prompt("Copie o link:", l);
     });
+    var bp = $("bd-planilha");
+    if (bp) bp.addEventListener("click", baixarPlanilha);
     var bi = $("bd-imprimir");
     if (bi) bi.addEventListener("click", function () {
       [].forEach.call(document.querySelectorAll("#bd details"), function (d) { d.setAttribute("open", ""); });
       window.print();
     });
   }
+  // Situação de cada fonte: [o quê, fonte, período, conferido em]
+  var SIT = [];
+  function situacao(itens) {
+    SIT = itens.filter(function (x) { return x && x[2]; });
+    if (!SIT.length) return "";
+    return '<details class="bd-escolas bd-mais"><summary>Até que mês vai cada informação</summary>' +
+      SIT.map(function (x) { return "<p><b>" + x[0] + ":</b> " + x[2] + " \u00b7 " + x[1] + (x[3] ? " \u00b7 conferido em " + x[3] : "") + ".</p>"; }).join("") +
+      "<p>Cada órgão publica os dados num ritmo diferente, por isso os períodos nem sempre são iguais. O robô do Repasse Aberto confere todas as fontes toda segunda-feira e traz o mês mais novo que cada uma já publicou. Quando um órgão ainda não publicou um mês, o site continua mostrando o último mês publicado, sem estimar valores.</p></details>";
+  }
+  function dataDia(iso) { return iso ? dataBR(String(iso).length === 10 ? iso + "T12:00:00" : iso) : ""; }
+
+  // Planilha (CSV) com tudo o que aparece no extrato, inclusive o que está dentro de "Ver ..."
+  function textoLimpo(n) { return (n ? n.textContent : "").replace(/\s+/g, " ").trim(); }
+  function semSmall(n) {
+    var c = n.cloneNode(true);
+    [].forEach.call(c.querySelectorAll("br"), function (br) { br.parentNode.replaceChild(document.createTextNode(" \u00b7 "), br); });
+    var sm = c.querySelector("small"), o = sm ? textoLimpo(sm) : "";
+    if (sm) sm.parentNode.removeChild(sm);
+    return [c, o];
+  }
+  function valorCSV(t) {
+    t = String(t || "");
+    var x = t.match(/R\$\s*(-?[\d.]+,\d{2})/);
+    if (x) return x[1].replace(/\./g, "");
+    return /^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, "") : "";
+  }
+  function baixarPlanilha() {
+    var art = document.querySelector("#bd-extrato-conteudo .bd-extrato");
+    if (!art || !atual) return;
+    var e = atual[0], m = atual[1], est = tipo === "estadual";
+    var L = [["Repasse Aberto", est ? "Repasses do estado" : "Repasses federais"], ["Município", m.nome + " (" + e.uf + ")"],
+      ["Código IBGE", m.id || ""], ["Planilha gerada em", new Date().toLocaleDateString("pt-BR")], ["Link", linkCidade(m.id)], [],
+      ["Bloco", "Período", "Item", "Valor (R$)", "Observação", "Detalhe de"]];
+    [].forEach.call(art.querySelectorAll(".bd-grupo"), function (g) {
+      var bloco = textoLimpo(g.querySelector(".bd-grupo-cab h3")), per = textoLimpo(g.querySelector(".bd-grupo-cab span"));
+      var dl = g.querySelector(".bd-linhas");
+      if (!dl) return;
+      [].forEach.call(dl.children, function (n) {
+        if (n.classList.contains("bd-linha")) {
+          var dd = n.querySelector("dd"), x = dd ? semSmall(dd) : [null, ""], v = textoLimpo(x[0]);
+          L.push([bloco, per, textoLimpo(n.querySelector("dt")), valorCSV(v) || v, x[1], ""]);
+        } else if (n.tagName === "DETAILS") {
+          var sum = textoLimpo(n.querySelector("summary"));
+          if (/^(Entenda|Como o total)/.test(sum)) return;
+          [].forEach.call(n.querySelectorAll("li"), function (li) {
+            var x = semSmall(li), c = x[0], sp = c.querySelector("span"), b = c.querySelector("b");
+            var nome = textoLimpo(sp || b), val = sp && b ? valorCSV(textoLimpo(b)) : valorCSV(x[1]);
+            L.push([bloco, per, nome, val, x[1], sum]);
+          });
+          [].forEach.call(n.querySelectorAll("p"), function (pp) {
+            var y = textoLimpo(pp).match(/^([^:]{2,140}):\s*R\$\s*(-?[\d.]+,\d{2})/);
+            if (y) L.push([bloco, per, y[1], y[2].replace(/\./g, ""), pp.classList.contains("bd-det-tit") ? "soma do grupo" : "", sum]);
+          });
+        }
+      });
+    });
+    var res = document.querySelector("#bd-extrato-conteudo .bd-resumo");
+    if (res) {
+      L.push([]);
+      L.push(["Resumo", "", textoLimpo(res.querySelector("h3")), valorCSV(textoLimpo(res.querySelector(".bd-resumo-sub"))), "", ""]);
+      [].forEach.call(res.querySelectorAll(".bd-barra-leg li"), function (li) {
+        var b = li.querySelector("b"), c = li.cloneNode(true), bb = c.querySelector("b");
+        if (bb) bb.parentNode.removeChild(bb);
+        L.push(["Resumo", "", textoLimpo(c), "", textoLimpo(b) + " do total", ""]);
+      });
+    }
+    if (SIT.length) {
+      L.push([]);
+      SIT.forEach(function (x) { L.push(["Até que mês vai cada informação", x[2], x[0], "", x[1] + (x[3] ? " · conferido em " + x[3] : ""), ""]); });
+    }
+    L.push([]);
+    L.push(["Valores conforme as fontes oficiais citadas no site. Portal independente, sem vínculo com o governo."]);
+    var csv = "\ufeff" + L.map(function (r) {
+      return r.map(function (c) { c = String(c == null ? "" : c); return /[;"\n\r]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c; }).join(";");
+    }).join("\r\n");
+    var nomeArq = "repasse-aberto_" + normalizar(m.nome).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-" + e.uf.toLowerCase() + "_" + (est ? "estaduais" : "federais") + ".csv";
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    if (window.navigator && window.navigator.msSaveBlob) { window.navigator.msSaveBlob(blob, nomeArq); return; }
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = nomeArq; a.style.display = "none";
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.parentNode.removeChild(a); }, 1500);
+    var bp = $("bd-planilha");
+    if (bp) { bp.textContent = "Planilha baixada!"; setTimeout(function () { bp.textContent = "Baixar planilha"; }, 2500); }
+  }
+
   function botoesAcoes(m, e, quando, assunto) {
     var link = linkCidade(m.id);
     var texto = "Veja " + assunto + " " + m.nome + " (" + e.uf + ") em " + quando + ": " + link;
     return '<div class="bd-acoes"><a class="bd-zap" href="https://wa.me/?text=' + encodeURIComponent(texto) + '" target="_blank" rel="noopener">Compartilhar no WhatsApp</a>' +
       '<button type="button" id="bd-copiar" data-link="' + escapar(link) + '">Copiar link desta cidade</button>' +
+      '<button type="button" id="bd-planilha">Baixar planilha</button>' +
       '<button type="button" id="bd-imprimir">Imprimir ou salvar PDF</button></div>';
   }
 
@@ -1039,6 +1128,7 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
         "<p><b>Não entra:</b> o dinheiro da União (está no extrato Federais); o Fundeb, que também fica no extrato Federais, mesmo sendo formado em boa parte por impostos do estado; e o que o estado gasta direto na cidade sem passar pela prefeitura, como escolas e hospitais estaduais.</p>" +
         "<p>Os valores são os que a prefeitura registrou na contabilidade enviada ao Tesouro Nacional, de janeiro até o último mês enviado.</p></details>";
       h += grupo("#3C82F0", "Convênios e outros", per, lo);
+      h += situacao([["Repasses do estado", "Tesouro Nacional (Siconfi), conforme a contabilidade enviada pela prefeitura", per, sUF ? dataDia(sUF.atualizado_em) : ""]]);
       h += '<p class="bd-fontes">Fonte: ' + linkFonte(SICONFI, "Tesouro Nacional — Siconfi") +
         " (Matriz de Saldos Contábeis que cada prefeitura envia todo mês). Algumas prefeituras atrasam o envio; quando isso acontece, os valores novos aparecem na atualização seguinte. " +
         linkFonte("https://cidades.ibge.gov.br/", "Ver a cidade no IBGE") + "</p>";
@@ -1275,6 +1365,13 @@ if(!/^\/?$/.test(location.pathname)){var s=document.createElement("style");s.tex
       "<p><b>Entra no total:</b> Fundeb, PDDE (inclusive o que vai direto para as escolas), merenda, Salário-Educação, transporte escolar e outros programas do MEC e do FNDE (Educação); o dinheiro do SUS enviado ao fundo municipal de saúde (Saúde); o dinheiro do fundo nacional enviado ao fundo municipal de assistência social (Assistência social); e FPM, royalties, ITR, CIDE e demais transferências da União.</p>" +
       "<p><b>Não entra:</b> convênios e obras federais, que são pagos aos poucos e aparecem no bloco próprio; Bolsa Família e BPC, pagos direto aos moradores; pagamentos que a União faz direto a hospitais filantrópicos e outras entidades de saúde e assistência; e os repasses do governo do estado, que estão no extrato Estaduais.</p>" +
       "<p>Tudo o que entra no total usa o mesmo período: de janeiro até o último mês completo publicado.</p></details>";
+    h += situacao([
+      ["Fundeb, FPM e demais transferências da União", "Tesouro Nacional", t ? periodo(t) : "", dUF ? dataDia(dUF.atualizado_em) : ""],
+      ["PDDE, merenda, Salário-Educação, transporte escolar, saúde e assistência social", "Portal da Transparência", pUF ? periodo(pUF) : "", pUF ? dataDia(pUF.atualizado_em) : ""],
+      ["Bolsa Família e BPC", "Portal da Transparência", mesP ? mesRef(mesP) : "", dUF ? dataDia(dUF.atualizado_em) : ""],
+      ["Alunos da rede municipal (base do Fundeb)", "FNDE", f && fUF && fUF.ano ? "matrículas usadas no Fundeb de " + fUF.ano : "", fUF ? dataDia(fUF.atualizado_em) : ""],
+      ["Convênios e obras federais", "Portal da Transparência", cUF && cUF.arquivo_de ? "situação em " + dataDia(cUF.arquivo_de) : "", cUF ? dataDia(cUF.atualizado_em) : ""]
+    ]);
     h += '<p class="bd-fontes">Fontes: ' + linkFonte(TESOURO, "Tesouro Nacional") + " (transferências e Fundeb), " +
       linkFonte(FNDE, "FNDE") + " (alunos considerados no Fundeb" + (fUF && fUF.ano ? " " + fUF.ano : "") + ") e " +
       linkFonte(PORTAL, "Portal da Transparência") + " (PDDE, merenda, Salário-Educação, transporte escolar, saúde, assistência social, Bolsa Família e BPC). " +
