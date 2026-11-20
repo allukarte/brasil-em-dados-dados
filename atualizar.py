@@ -328,34 +328,79 @@ def tesouro_registros(params):
     return linhas
 
 
-def resumir_tesouro(linhas, ano):
-    """Agrupa as linhas por município: total por tipo de transferência e meses cobertos."""
-    por_mun = {}
+def mes_fechado_tesouro(ano, mes, hoje=None):
+    """O FPM, o Fundeb e as demais transferências são pagos em três parcelas por mês (decêndios).
+    A última parcela pode demorar a aparecer na consulta do Tesouro, por isso um mês só conta
+    como completo a partir do dia 10 do mês seguinte."""
+    hoje = hoje or date.today()
+    seg = date(ano + (mes == 12), 1 if mes == 12 else mes + 1, 10)
+    return hoje >= seg
+
+
+def resumir_tesouro(linhas, ano, meses_completos=False):
+    """Agrupa as linhas por município: total por tipo de transferência, mês a mês, usando só os
+    meses completos (de janeiro até o último mês completo, sem buracos)."""
+    por_mun, decendios = {}, {}
+    chave_dec = None
+    for r in linhas[:50]:
+        for k in r:
+            if "decend" in normalizar(k):
+                chave_dec = k
+                break
+        if chave_dec:
+            break
     for r in linhas:
         cod = "".join(ch for ch in str(chave_ci(r, "co_ibge") or "") if ch.isdigit())
         if not cod:
             continue
         nome = str(chave_ci(r, "transferencia") or "Outras").strip()
         mes = int(numero(chave_ci(r, "mes")))
+        if not mes:
+            continue
         valor = numero(chave_ci(r, "valor", "total"))
-        m = por_mun.setdefault(cod, {"ano": ano, "meses": set(), "itens": {}})
-        if mes:
-            m["meses"].add(mes)
-        m["itens"][nome] = m["itens"].get(nome, 0.0) + valor
+        m = por_mun.setdefault(cod, {})
+        mm = m.setdefault(mes, {})
+        mm[nome] = mm.get(nome, 0.0) + valor
+        if chave_dec and r.get(chave_dec) not in (None, ""):
+            decendios.setdefault(mes, set()).add(str(r.get(chave_dec)))
+    # último mês completo, igual para todas as cidades
+    todos = sorted({mes for m in por_mun.values() for mes in m})
+    ultimo = 0
+    for mes in range(1, 13):
+        if mes not in todos:
+            break
+        ok = True if meses_completos else mes_fechado_tesouro(ano, mes)
+        if ok and chave_dec and not meses_completos and len(decendios.get(mes, ())) < 3:
+            ok = False
+        if not ok:
+            break
+        ultimo = mes
+    if todos and ultimo < todos[-1]:
+        log(f"Tesouro: {ano} — meses {todos[0]} a {todos[-1]} na fonte; usando só até o mês {ultimo}, o último completo.")
     saida = {}
+    if not ultimo:
+        return saida
     for cod, m in por_mun.items():
-        itens = {k: round(v, 2) for k, v in sorted(m["itens"].items(), key=lambda kv: -kv[1])}
+        itens, serie = {}, {"fundeb": [], "fpm": [], "total": []}
+        for mes in range(1, ultimo + 1):
+            mm = m.get(mes, {})
+            for k, v in mm.items():
+                itens[k] = itens.get(k, 0.0) + v
+            serie["fundeb"].append(round(sum(v for k, v in mm.items() if "FUNDEB" in k.upper()), 2))
+            serie["fpm"].append(round(sum(v for k, v in mm.items() if k.upper().startswith("FPM")), 2))
+            serie["total"].append(round(sum(mm.values()), 2))
+        itens = {k: round(v, 2) for k, v in sorted(itens.items(), key=lambda kv: -kv[1])}
         fundeb = sum(v for k, v in itens.items() if "FUNDEB" in k.upper())
         fpm = sum(v for k, v in itens.items() if k.upper().startswith("FPM"))
-        meses = sorted(m["meses"])
         saida[cod] = {
             "ano": ano,
-            "mes_inicial": meses[0] if meses else None,
-            "mes_final": meses[-1] if meses else None,
+            "mes_inicial": 1,
+            "mes_final": ultimo,
             "fundeb": round(fundeb, 2),
             "fpm": round(fpm, 2),
             "total": round(sum(itens.values()), 2),
             "por_tipo": itens,
+            "mensal": {k: [int(x) if x == int(x) else x for x in v] for k, v in serie.items()},
         }
     return saida
 
@@ -563,7 +608,7 @@ def resumo_tesouro_arquivo(municipios_por_uf):
     for ano in (hoje.year, hoje.year - 1):
         linhas = linhas_tesouro_arquivo(ano, municipios_por_uf)
         if linhas:
-            resumo = resumir_tesouro(linhas, ano)
+            resumo = resumir_tesouro(linhas, ano, meses_completos=True)
             break
     if resumo:
         anterior = {}
@@ -619,7 +664,10 @@ def usar_tesouro_arquivo(uf, municipios, dados, municipios_por_uf):
     for cod in ids:
         mun = dados["municipios"].setdefault(cod, {})
         atual, novo = mun.get("transferencias"), resumo.get(cod)
-        if novo and (not atual or (novo["ano"], novo["mes_final"] or 0) > (atual.get("ano") or 0, atual.get("mes_final") or 0)):
+        # troca quando o arquivo é mais novo, ou quando o dado atual é do formato antigo (sem mês a mês),
+        # que podia incluir um mês ainda incompleto
+        antigo = atual and "mensal" not in atual
+        if novo and (not atual or antigo or (novo["ano"], novo["mes_final"] or 0) > (atual.get("ano") or 0, atual.get("mes_final") or 0)):
             mun["transferencias"] = novo
             trocados += 1
             atual = novo
@@ -1292,6 +1340,25 @@ def atualizar_pdde(ufs):
             if t["assist"]:
                 saida["municipios"][ibge]["assistencia"] = dict({k: round(v, 2) for k, v in t["assist"].items()},
                                                                 total=round(sum(t["assist"].values()), 2))
+            # Mês a mês (de mes_inicial a mes_final), com as mesmas regras dos totais:
+            # só as escolas que ficaram com saldo positivo no ano e só os programas com valor positivo.
+            kept = {c for c, (n, v) in t["esc"].items() if v > 0}
+            edu_ok = {k for k, v in t["edu"].items() if v > 0}
+            serie = {k: [] for k in ("pdde", "pnae", "se", "pnate", "saude", "assist", "edu")}
+            for doMes in mensais:
+                mm = doMes.get(uf, {}).get(ibge)
+                if not mm:
+                    for k in serie:
+                        serie[k].append(0.0)
+                    continue
+                serie["pdde"].append(round(sum(v for c, (n, v) in mm["esc"].items() if c in kept) + mm["pref"], 2))
+                serie["pnae"].append(round(mm["pnae"], 2))
+                serie["se"].append(round(mm.get("se", 0.0), 2))
+                serie["pnate"].append(round(mm.get("pnate", 0.0), 2))
+                serie["saude"].append(round(sum(mm.get("saude", {}).values()), 2))
+                serie["assist"].append(round(sum(mm.get("assist", {}).values()), 2))
+                serie["edu"].append(round(sum(v for k, v in mm.get("edu", {}).items() if k in edu_ok), 2))
+            saida["municipios"][ibge]["mensal"] = {k: [int(x) if x == int(x) else x for x in v] for k, v in serie.items()}
         with open(os.path.join(PASTA_PDDE, f"{uf}.json"), "w", encoding="utf-8") as f:
             json.dump(saida, f, ensure_ascii=False, separators=(",", ":"))
         log(f"PDDE: {uf} — {len(saida['municipios'])} municípios gravados.")
