@@ -489,6 +489,7 @@ def atualizar_tesouro(uf, municipios, dados, codigos, municipios_por_uf=None):
 
 # ----------------------------------------------------------------- Tesouro: plano B (arquivo do Tesouro Transparente)
 
+PASTA_TESOURO_MENSAL = os.path.join(PASTA, "tesouro_mensal")
 CKAN_TT = "https://www.tesourotransparente.gov.br/ckan/api/3/action/package_show?id="
 DATASET_TRANSF_MUN = "af4e7c47-2132-4d9a-bd7c-34e28a210b03"
 
@@ -551,8 +552,29 @@ def linhas_tesouro_arquivo(ano, municipios_por_uf):
         cod = ids.get((uf, _chave_nome(atual)))
         if cod:
             ids.setdefault((uf, _chave_nome(antigo)), cod)
+    # Cópia de cada mês já baixado fica guardada no repositório (dados/tesouro_mensal), para o robô
+    # não depender do site do Tesouro Transparente estar no ar.
+    os.makedirs(PASTA_TESOURO_MENSAL, exist_ok=True)
+    guardados = {}
+    for nome in os.listdir(PASTA_TESOURO_MENSAL):
+        mm = re.match(rf"^{ano}-(\d\d)\.json\.gz$", nome)
+        if mm:
+            try:
+                with gzip.open(os.path.join(PASTA_TESOURO_MENSAL, nome), "rt", encoding="utf-8") as f:
+                    guardados[int(mm.group(1))] = json.load(f)
+            except Exception:
+                pass
     meses_feitos, sem_id = set(), set()
     for r in recursos:
+        publicado = r.get("last_modified") or r.get("created") or ""
+        nm = re.search(r"_(\d{4})(\d\d)\b", (r.get("name") or "").replace(".csv", ""))
+        if nm:   # o arquivo AAAAMM traz o mês anterior
+            a_, m_ = int(nm.group(1)), int(nm.group(2))
+            esperado = (a_ - 1, 12) if m_ == 1 else (a_, m_ - 1)
+            g = guardados.get(esperado[1]) if esperado[0] == ano else None
+            if esperado[0] == ano and (esperado[1] in meses_feitos or (g and g.get("publicado", "") >= publicado)):
+                meses_feitos.add(esperado[1])
+                continue
         try:
             req = urllib.request.Request(r.get("url") or "", headers={"User-Agent": "RepasseAberto/1.0"})
             with urllib.request.urlopen(req, timeout=300) as resp:
@@ -564,7 +586,7 @@ def linhas_tesouro_arquivo(ano, municipios_por_uf):
             txt = bruto.decode("utf-8-sig")
         except UnicodeDecodeError:
             txt = bruto.decode("latin-1")
-        linhas, mes_arq = [], None
+        por_mes = {}
         for l in txt.splitlines()[1:]:
             c = l.split(";")
             if len(c) < 9 or not c[2].strip().isdigit() or not c[3].strip().isdigit():
@@ -574,7 +596,6 @@ def linhas_tesouro_arquivo(ano, municipios_por_uf):
             mes = int(c[3])
             if mes in meses_feitos:
                 continue
-            mes_arq = mes
             tipo, item = c[8].strip(), c[7].strip()
             if item.upper() == "DEDU":   # parte da cidade retida para o Fundeb: não é dinheiro recebido
                 continue
@@ -587,14 +608,20 @@ def linhas_tesouro_arquivo(ano, municipios_por_uf):
                 sem_id.add((c[1].strip(), c[0].strip()))
                 continue
             valor = sum(numero(x) for x in c[4:7])
-            linhas.append({"co_ibge": cod, "ano": ano, "mes": mes, "transferencia": tipo, "valor": valor})
-        if mes_arq is not None:
-            meses = {x["mes"] for x in linhas}
-            meses_feitos |= meses
-            _ARQ_LINHAS[ano].extend(linhas)
+            agg = por_mes.setdefault(mes, {})
+            agg[(cod, tipo)] = agg.get((cod, tipo), 0.0) + valor
+        for mes, agg in por_mes.items():
+            guardados[mes] = {"publicado": publicado, "origem": r.get("name"),
+                              "linhas": [[cod, tipo, round(v, 2)] for (cod, tipo), v in agg.items()]}
+            with gzip.open(os.path.join(PASTA_TESOURO_MENSAL, f"{ano}-{mes:02d}.json.gz"), "wt", encoding="utf-8") as f:
+                json.dump(guardados[mes], f, ensure_ascii=False, separators=(",", ":"))
+            meses_feitos.add(mes)
+    for mes in sorted(guardados):
+        for cod, tipo, valor in guardados[mes]["linhas"]:
+            _ARQ_LINHAS[ano].append({"co_ibge": cod, "ano": ano, "mes": mes, "transferencia": tipo, "valor": valor})
     if sem_id:
         log(f"Tesouro (arquivo): {len(sem_id)} nomes de município não reconhecidos, ex.: {sorted(sem_id)[:5]}")
-    log(f"Tesouro (arquivo): {ano} — meses {sorted(meses_feitos)}, {len(_ARQ_LINHAS[ano])} linhas.")
+    log(f"Tesouro (arquivo): {ano} — meses {sorted(guardados)} ({len(meses_feitos)} conferidos no site agora), {len(_ARQ_LINHAS[ano])} linhas.")
     return _ARQ_LINHAS[ano]
 
 
