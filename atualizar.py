@@ -2025,6 +2025,28 @@ def main():
         atualizar_convenios(ufs)
         log("Concluído.")
         return
+    if fontes == "rede_teste":
+        import ssl, socket
+        alvos = ["https://www.tesourotransparente.gov.br/ckan/api/3/action/package_show?id=" + DATASET_TRANSF_MUN,
+                 "https://apiapex.tesouro.gov.br/aria/v1/transferencias_constitucionais/custom?p_ano=2026&p_estado=35",
+                 "https://www.gov.br/fnde/pt-br", "https://siconfi.tesouro.gov.br/", "https://portaldatransparencia.gov.br/"]
+        uas = ["RepasseAberto/1.0", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"]
+        for u in alvos:
+            for ua in uas:
+                try:
+                    req = urllib.request.Request(u, headers={"User-Agent": ua, "Accept": "*/*"})
+                    with urllib.request.urlopen(req, timeout=40) as r:
+                        log(f"REDE {r.status} {len(r.read(2000))}b UA={ua[:12]} {u[:70]}")
+                except urllib.error.HTTPError as e:
+                    log(f"REDE HTTP {e.code} UA={ua[:12]} {u[:70]}")
+                except Exception as e:
+                    log(f"REDE ERRO {e.__class__.__name__}: {str(e)[:80]} UA={ua[:12]} {u[:70]}")
+        try:
+            log("REDE IP de saída: " + urllib.request.urlopen("https://api.ipify.org", timeout=20).read().decode())
+        except Exception as e:
+            log(f"REDE IP: {e}")
+        log("Concluído.")
+        return
     if fontes == "tesouro_teste":
         testar_tesouro_arquivo(municipios_ibge())
         log("Concluído.")

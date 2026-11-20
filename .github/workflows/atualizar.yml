@@ -29,6 +29,7 @@ on:
           - convenios
           - estaduais
           - tesouro_teste
+          - rede_teste
 
 permissions:
   contents: write
